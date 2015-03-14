@@ -1,7 +1,8 @@
-// TODO: move to main coap lib;
-#include <coap.h> // cache91's fork; forkhttps://github.com/cache91/microcoap
-// TODO: fork and add changes to esp8266 lib:
+#include <coap.h> // https://github.com/1248/microcoap
+// TODO: add changes to esp8266 lib:
 #include <ESP8266.h> // https://github.com/itead/ITEADLIB_Arduino_WeeESP8266
+
+#define UDP_TX_PACKET_MAX_SIZE 860
 
 // Wi-Fi Settings
 #define SSID        "SSID"
@@ -216,7 +217,7 @@ void setup()
 
 void loop()
 {
-    uint8_t buffer[1024] = {0}; // recieve and send buffer
+    uint8_t buffer[256] = {0}; // recieve and send buffer
 
     uint32_t len = esp8266.recv(buffer, sizeof(buffer), 1000);
     if (len > 0)
@@ -224,7 +225,8 @@ void loop()
         Serial.print("Received:[");
         for(uint32_t i = 0; i < len; i++)
         {
-            Serial.print((char)buffer[i]);
+            Serial.print(buffer[i],HEX);
+			Serial.print(' ');
         }
         Serial.print("]\r\n");
 
@@ -249,7 +251,7 @@ void loop()
             coap_packet_t rsppkt;
             coap_handle_req(&scratch_buf, &pkt, &rsppkt);
 
-            memset(buffer, 0, 1024);
+            //memset(buffer, 0, 1024);
             if (0 != (rc = coap_build(buffer, &rsplen, &rsppkt)))
             {
                 Serial.print("coap_build failed rc=");
@@ -258,12 +260,13 @@ void loop()
             else
             {
                 Serial.print("Answer ready:[");
-                for(uint32_t i = 0; i < len; i++)
+                for(uint32_t i = 0; i < rsplen; i++)
                 {
-                    Serial.print((char)buffer[i]);
+                    Serial.print(rsppkt[i],HEX);
+			        Serial.print(' ');
                 }
                 Serial.print("]\r\n");
-                esp8266.send(0,buffer, rsplen);
+                esp8266.send(0,rsppkt, rsplen);
             }
         }
     }
