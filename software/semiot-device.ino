@@ -244,13 +244,13 @@ void loop()
         else
         {
             size_t rsplen = sizeof(buffer);
-            Serial.print("size of rsplen: ");
-            Serial.println(rsplen);
+            //Serial.print("size of rsplen: ");
+            //Serial.println(rsplen);
 
             coap_packet_t rsppkt;
             coap_handle_req(&scratch_buf, &pkt, &rsppkt);
 
-            //memset(buffer, 0, 1024);
+            memset(buffer, 0, sizeof(buffer));
             if (0 != (rc = coap_build(buffer, &rsplen, &rsppkt)))
             {
                 Serial.print("coap_build failed rc=");
