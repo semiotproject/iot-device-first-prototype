@@ -1,5 +1,4 @@
 #include <coap.h> // https://github.com/1248/microcoap
-// TODO: add changes to esp8266 lib:
 #include <ESP8266.h> // https://github.com/itead/ITEADLIB_Arduino_WeeESP8266
 
 #define UDP_TX_PACKET_MAX_SIZE 860
@@ -76,7 +75,7 @@ void regUDP()
 
 void unregUDPServer()
 {
-    if (esp8266.stopTCPServer())
+    if (esp8266.stopServer())
     {
         Serial.print("ok\r\n");
     }
@@ -93,7 +92,7 @@ void regUDPServer()
 {
     while (1) {
         Serial.println("Try to start server");
-        if (esp8266.startTCPServer(uint32_t(HOST_PORT))) // No matter TCP or UDP for this ver.
+        if (esp8266.startServer(uint32_t(HOST_PORT)))
         {
             Serial.println("ok");
             break;
@@ -262,11 +261,11 @@ void loop()
                 Serial.print("Answer ready:[");
                 for(uint32_t i = 0; i < rsplen; i++)
                 {
-                    Serial.print(rsppkt[i],HEX);
+                    Serial.print(buffer[i],HEX);
 			        Serial.print(' ');
                 }
                 Serial.print("]\r\n");
-                esp8266.send(0,rsppkt, rsplen);
+                esp8266.send(0,buffer, rsplen);
             }
         }
     }
