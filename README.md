@@ -7,6 +7,8 @@ Arduino MEGA 2560 and ESP8266 WiFi-Module based IoT Device prototype
 
 ## SOFTWARE:
 + Arduino sketches, info about used libraries inside
-For testing I recommend to use Wireshark and libcoap 
++ For testing I recommend to use Wireshark and libcoap 
 coap-client:
-``coap-client -v 1 -p 5683 -m get coap://<device_ip>/.well-known/core
+```
+coap-client -v 1 -p 5683 -m get coap://DEVICE_IP/.well-known/core
+```
