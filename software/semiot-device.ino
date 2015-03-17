@@ -212,11 +212,13 @@ void setup()
     regUDP();
     Serial.println("Setup status:");
     Serial.println(esp8266.getIPStatus());
+	coap_setup();
+    endpoint_setup();
 }
 
 void loop()
 {
-    uint8_t buffer[256] = {0}; // recieve and send buffer
+    uint8_t buffer[UDP_TX_PACKET_MAX_SIZE] = {0}; // recieve and send buffer
 
     uint32_t len = esp8266.recv(buffer, sizeof(buffer), 1000);
     if (len > 0)
@@ -233,7 +235,7 @@ void loop()
 
         int rc;
         coap_packet_t pkt;
-        static uint8_t scratch_raw[32];
+        static uint8_t scratch_raw[UDP_TX_PACKET_MAX_SIZE];
         static coap_rw_buffer_t scratch_buf = {scratch_raw, sizeof(scratch_raw)};
 
         if (0 != (rc = coap_parse(&pkt, buffer, len)))
@@ -250,7 +252,7 @@ void loop()
             coap_packet_t rsppkt;
             coap_handle_req(&scratch_buf, &pkt, &rsppkt);
 
-            memset(buffer, 0, sizeof(buffer));
+            //memset(buffer, 0, sizeof(buffer));
             if (0 != (rc = coap_build(buffer, &rsplen, &rsppkt)))
             {
                 Serial.print("coap_build failed rc=");
