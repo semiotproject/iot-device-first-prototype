@@ -154,7 +154,7 @@ void setupESP8266()
         {
             Serial.print("to station ok\r\n");
             break;
-        }digitalRead
+        }
         else
         {
             Serial.print("to station err\r\n");
@@ -274,7 +274,7 @@ void loop()
             Serial.print("Bad packet rc=");
             Serial.println(rc, DEC);
         }
-        else15
+        else
         {
             size_t rsplen = sizeof(buffer);
             //Serial.print("size of rsplen: ");
