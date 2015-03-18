@@ -1,5 +1,6 @@
 #include <coap.h> // https://github.com/1248/microcoap
 #include <ESP8266.h> // https://github.com/itead/ITEADLIB_Arduino_WeeESP8266
+#include <dht.h> // https://github.com/amperka/dht
 
 #define UDP_TX_PACKET_MAX_SIZE 860
 
@@ -11,16 +12,19 @@ String HOST_NAME;
 #define HOST_PORT   (5683) // CoAP
 
 // TODO: DHT11 sensor
-#define DHT11_VCC_PIN 8
-#define DHT11_DATA_PIN 9
-#define DHT11_NC_PIN 10 //NC
-#define DHT11_GND_PIN 11
+// #define DHT11_VCC_PIN 8
+// #define DHT11_DATA_PIN 9
+// #define DHT11_NC_PIN 10 //NC
+// #define DHT11_GND_PIN 11
+
+#define DHT11_DATA_PIN 7
 
 // Arduino<->ESP8266 Baudrate
 #define BAUDRATE 9600
 
 
 ESP8266 esp8266(Serial3,BAUDRATE);
+DHT dht11 = DHT();
 
 /*
  * TODO: DHT11 sensor
@@ -150,7 +154,7 @@ void setupESP8266()
         {
             Serial.print("to station ok\r\n");
             break;
-        }
+        }digitalRead
         else
         {
             Serial.print("to station err\r\n");
@@ -168,6 +172,7 @@ void setupESP8266()
             HOST_NAME = esp8266.getLocalIP();//.substring(13); // '192.168.4.1\n' -- softAP
             Serial.println(HOST_NAME);
             // Broadcast in subnet:
+            // TODO: answer directly to the source:
             HOST_NAME = HOST_NAME.substring(0,HOST_NAME.lastIndexOf('.'))+String(".255");
             Serial.print("Going broadcast UDP to: ");
             Serial.println(HOST_NAME);
@@ -206,18 +211,44 @@ void setup()
 {
     Serial.begin(BAUDRATE);
     Serial.print("setup...\r\n");
+    dht11.attach(DHT11_DATA_PIN);
     Serial3.begin(BAUDRATE);
     setupESP8266();
     regUDPServer();
     regUDP();
     Serial.println("Setup status:");
     Serial.println(esp8266.getIPStatus());
-	coap_setup();
+    coap_setup();
     endpoint_setup();
+    delay(1000); // dht11;
 }
 
 void loop()
 {
+    dht11.update();
+    switch (dht11.getLastError())
+    {
+        case DHT_ERROR_OK:
+            char msg[128];
+            sprintf(msg, "Temperature = %dC, Humidity = %d%%",
+                    dht11.getTemperatureInt(), dht11.getHumidityInt());
+            Serial.println(msg);
+            break;
+        case DHT_ERROR_START_FAILED_1:
+            Serial.println("Error: start failed (stage 1)");
+            break;
+        case DHT_ERROR_START_FAILED_2:
+            Serial.println("Error: start failed (stage 2)");
+            break;
+        case DHT_ERROR_READ_TIMEOUT:
+            Serial.println("Error: read timeout");
+            break;
+        case DHT_ERROR_CHECKSUM_FAILURE:
+            Serial.println("Error: checksum error");
+            break;
+    }
+    delay(2000); // dht11
+
     uint8_t buffer[UDP_TX_PACKET_MAX_SIZE] = {0}; // recieve and send buffer
 
     uint32_t len = esp8266.recv(buffer, sizeof(buffer), 1000);
@@ -227,7 +258,7 @@ void loop()
         for(uint32_t i = 0; i < len; i++)
         {
             Serial.print(buffer[i],HEX);
-			Serial.print(' ');
+            Serial.print(' ');
         }
         Serial.print("]\r\n");
 
@@ -243,7 +274,7 @@ void loop()
             Serial.print("Bad packet rc=");
             Serial.println(rc, DEC);
         }
-        else
+        else15
         {
             size_t rsplen = sizeof(buffer);
             //Serial.print("size of rsplen: ");
