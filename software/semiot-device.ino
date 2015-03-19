@@ -7,8 +7,8 @@
 #define UDP_TX_PACKET_MAX_SIZE 860
 
 // Wi-Fi Settings
-#define SSID        "Burunduchki"
-#define PASSWORD    "burunduchki"
+#define SSID        "SSID"
+#define PASSWORD    "PASSWORD"
 
 String HOST_NAME;
 #define HOST_PORT   (5683) // CoAP
