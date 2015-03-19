@@ -1,6 +1,7 @@
 #include <coap.h> // https://github.com/1248/microcoap
 #include <ESP8266.h> // https://github.com/itead/ITEADLIB_Arduino_WeeESP8266
-#include <dht.h> // https://github.com/amperka/dht
+//TODO: move to: https://github.com/niesteszeck/idDHT11
+#include "DHT.h" //https://github.com/RobTillaart/Arduino/tree/master/libraries/DHTlib
 
 #define UDP_TX_PACKET_MAX_SIZE 860
 
@@ -11,40 +12,16 @@
 String HOST_NAME;
 #define HOST_PORT   (5683) // CoAP
 
-// TODO: DHT11 sensor
-// #define DHT11_VCC_PIN 8
-// #define DHT11_DATA_PIN 9
-// #define DHT11_NC_PIN 10 //NC
-// #define DHT11_GND_PIN 11
-
-#define DHT11_DATA_PIN 7
+// DHT 11
+#define DHTTYPE DHT11   
+#define DHT11_DATA_PIN 2
 
 // Arduino<->ESP8266 Baudrate
 #define BAUDRATE 9600
 
 
 ESP8266 esp8266(Serial3,BAUDRATE);
-DHT dht11 = DHT();
-
-/*
- * TODO: DHT11 sensor
-void setNC(int pin)
-{
-	pinMode(pin, INPUT);
-}
-
-void setGND(int pin)
-{
-	pinMode(pin, OUTPUT);
-	digitalWrite(pin, LOW);
-}
-
-void setVCC(int pin)
-{
-	pinMode(pin, OUTPUT);
-	digitalWrite(pin, HIGH);
-}
-*/
+DHT dht11 = DHT(DHT11_DATA_PIN,DHTTYPE);
 
 void unregUDP()
 {
@@ -110,9 +87,6 @@ void regUDPServer()
         }
     }
 }
-
-
-
 
 void setupESP8266()
 {
@@ -211,7 +185,6 @@ void setup()
 {
     Serial.begin(BAUDRATE);
     Serial.print("setup...\r\n");
-    dht11.attach(DHT11_DATA_PIN);
     Serial3.begin(BAUDRATE);
     setupESP8266();
     regUDPServer();
@@ -220,34 +193,35 @@ void setup()
     Serial.println(esp8266.getIPStatus());
     coap_setup();
     endpoint_setup();
-    delay(1000); // dht11;
+    dht11.begin();
 }
 
 void loop()
 {
-    dht11.update();
-    switch (dht11.getLastError())
+    //DHT11:
+
+    // Reading temperature or humidity takes about 250 milliseconds!
+    // Sensor readings may also be up to 2 seconds 'old' (its a very slow sensor)
+    float h = dht11.readHumidity();
+    float t = dht11.readTemperature();
+
+    // check if returns are valid, if they are NaN (not a number) then something went wrong!
+    if (isnan(t) || isnan(h))
     {
-        case DHT_ERROR_OK:
-            char msg[128];
-            sprintf(msg, "Temperature = %dC, Humidity = %d%%",
-                    dht11.getTemperatureInt(), dht11.getHumidityInt());
-            Serial.println(msg);
-            break;
-        case DHT_ERROR_START_FAILED_1:
-            Serial.println("Error: start failed (stage 1)");
-            break;
-        case DHT_ERROR_START_FAILED_2:
-            Serial.println("Error: start failed (stage 2)");
-            break;
-        case DHT_ERROR_READ_TIMEOUT:
-            Serial.println("Error: read timeout");
-            break;
-        case DHT_ERROR_CHECKSUM_FAILURE:
-            Serial.println("Error: checksum error");
-            break;
+      Serial.println("Failed to read from DHT");
     }
-    delay(2000); // dht11
+    else
+    {
+      Serial.print("Humidity: ");
+      Serial.print(h);
+      Serial.print(" %\t");
+      Serial.print("Temperature: ");
+      Serial.print(t);
+      Serial.println(" *C");
+    }
+
+
+    //CoAP:
 
     uint8_t buffer[UDP_TX_PACKET_MAX_SIZE] = {0}; // recieve and send buffer
 
