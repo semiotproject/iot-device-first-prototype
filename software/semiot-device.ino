@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include <coap.h> // https://github.com/1248/microcoap
 #include <ESP8266.h> // https://github.com/itead/ITEADLIB_Arduino_WeeESP8266
 //TODO: move to: https://github.com/niesteszeck/idDHT11
@@ -6,8 +7,8 @@
 #define UDP_TX_PACKET_MAX_SIZE 860
 
 // Wi-Fi Settings
-#define SSID        "SSID"
-#define PASSWORD    "PASSWORD"
+#define SSID        "Burunduchki"
+#define PASSWORD    "burunduchki"
 
 String HOST_NAME;
 #define HOST_PORT   (5683) // CoAP
@@ -184,6 +185,16 @@ void setupESP8266()
 void setup()
 {
     Serial.begin(BAUDRATE);
+    /*
+    // tst
+    Serial.println("gogo");
+    char mstr[6];
+    float my_number = float(20.00);
+    Serial.println("My value: ");
+    Serial.println(float(20.00));
+    Serial.println(dtostrf(my_number,1,2,&mstr[0]));
+    */
+	
     Serial.print("setup...\r\n");
     Serial3.begin(BAUDRATE);
     setupESP8266();
@@ -202,23 +213,30 @@ void loop()
 
     // Reading temperature or humidity takes about 250 milliseconds!
     // Sensor readings may also be up to 2 seconds 'old' (its a very slow sensor)
+    char d = 0;
     float h = dht11.readHumidity();
     float t = dht11.readTemperature();
 
     // check if returns are valid, if they are NaN (not a number) then something went wrong!
     if (isnan(t) || isnan(h))
     {
-      Serial.println("Failed to read from DHT");
+        d = 0;
+        h = 0;
+        t = 0;
+        Serial.println("Failed to read from DHT");
+
     }
     else
     {
-      Serial.print("Humidity: ");
-      Serial.print(h);
-      Serial.print(" %\t");
-      Serial.print("Temperature: ");
-      Serial.print(t);
-      Serial.println(" *C");
+        d = 1;
+        Serial.print("Humidity: ");
+        Serial.print(h);
+        Serial.print(" %\t");
+        Serial.print("Temperature: ");
+        Serial.print(t);
+        Serial.println(" *C");
     }
+    update_dht11(&d,&h,&t);
 
 
     //CoAP:
