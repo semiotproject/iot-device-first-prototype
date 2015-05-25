@@ -1,25 +1,23 @@
 #include <stdlib.h>
 #include <coap.h> // https://github.com/1248/microcoap
-#include <ESP8266.h> // https://github.com/itead/ITEADLIB_Arduino_WeeESP8266
+#include "ESP8266.h" // https://github.com/itead/ITEADLIB_Arduino_WeeESP8266
 //TODO: move to: https://github.com/niesteszeck/idDHT11
 #include "DHT.h" //https://github.com/RobTillaart/Arduino/tree/master/libraries/DHTlib
 
 #define UDP_TX_PACKET_MAX_SIZE 860
 
-// Wi-Fi Settings
-#define SSID        "SSID"
-#define PASSWORD    "PASSWORD"
+// TODO test:
+#include "wifisettings.h"
 
 String HOST_NAME;
-#define HOST_PORT   (5683) // CoAP
+long unsigned int HOST_PORT=5683; //   (5683) // CoAP
 
-// DHT 11
-#define DHTTYPE DHT11   
+// DHT 22
+#define DHTTYPE DHT22   
 #define DHT11_DATA_PIN 2
 
 // Arduino<->ESP8266 Baudrate
 #define BAUDRATE 9600
-
 
 ESP8266 esp8266(Serial3,BAUDRATE);
 DHT dht11 = DHT(DHT11_DATA_PIN,DHTTYPE);
@@ -27,7 +25,7 @@ DHT dht11 = DHT(DHT11_DATA_PIN,DHTTYPE);
 void unregUDP()
 {
     // mux_id=0:
-    if (esp8266.unregisterUDP(0)) {
+    if (esp8266.unregisterUDP(3)) {
         Serial.print("unregister udp ok\r\n");
     }
     else {
@@ -40,19 +38,35 @@ void regUDP()
     // mux_id=0:
     while (1) {
         Serial.println("Trying to register UDP");
-        if (esp8266.registerUDP(0,String(HOST_NAME), uint32_t(HOST_PORT)))
+        // STATUS:N\n"+CIPSTATUS:N,"UDP","192.168.43.178",5683,N"
+        // HOST_NAME.substring(0,HOST_NAME.lastIndexOf('.'))+String(".255");
+        HOST_NAME = esp8266.getIPStatus();
+        //Serial.println(HOST_NAME);
+        HOST_NAME = HOST_NAME.substring(30); // STATUS:N\n"+CIPSTATUS:N,"UDP","
+        //Serial.println(HOST_NAME);
+        HOST_PORT = HOST_NAME.substring(HOST_NAME.indexOf(',')+1,HOST_NAME.lastIndexOf(',')).toInt();
+        //Serial.println("");
+        //Serial.println(HOST_NAME);
+        //Serial.println(HOST_PORT);
+        //Serial.println("");
+        HOST_NAME = HOST_NAME.substring(0,HOST_NAME.indexOf('"'));
+        
+        Serial.println(HOST_NAME);
+        Serial.println(HOST_PORT);
+
+        
+        if (esp8266.registerUDP(3,HOST_NAME, uint32_t(HOST_PORT)))
         {
             Serial.println("register udp ok");
             break;
         }
         else {
             Serial.println("Failed to register UDP");
-            unregUDP();
+            //unregUDP();
             Serial.println("Wait 5 seconds and try again...");
             delay(5000);
         }
     }
-
 }
 
 void unregUDPServer()
@@ -132,7 +146,7 @@ void setupESP8266()
         }
         else
         {
-            Serial.print("to station err\r\n");
+            Serial.print("to stati1on err\r\n");
             Serial.println("Wait 5 seconds and try again...");
             delay(5000);
         }
@@ -185,21 +199,11 @@ void setupESP8266()
 void setup()
 {
     Serial.begin(BAUDRATE);
-    /*
-    // tst
-    Serial.println("gogo");
-    char mstr[6];
-    float my_number = float(20.00);
-    Serial.println("My value: ");
-    Serial.println(float(20.00));
-    Serial.println(dtostrf(my_number,1,2,&mstr[0]));
-    */
-	
     Serial.print("setup...\r\n");
     Serial3.begin(BAUDRATE);
     setupESP8266();
     regUDPServer();
-    regUDP();
+    //regUDP();
     Serial.println("Setup status:");
     Serial.println(esp8266.getIPStatus());
     coap_setup();
@@ -269,13 +273,10 @@ void loop()
         else
         {
             size_t rsplen = sizeof(buffer);
-            //Serial.print("size of rsplen: ");
-            //Serial.println(rsplen);
 
             coap_packet_t rsppkt;
             coap_handle_req(&scratch_buf, &pkt, &rsppkt);
 
-            //memset(buffer, 0, sizeof(buffer));
             if (0 != (rc = coap_build(buffer, &rsplen, &rsppkt)))
             {
                 Serial.print("coap_build failed rc=");
@@ -287,10 +288,12 @@ void loop()
                 for(uint32_t i = 0; i < rsplen; i++)
                 {
                     Serial.print(buffer[i],HEX);
-			        Serial.print(' ');
+                    Serial.print(' ');
                 }
                 Serial.print("]\r\n");
+                regUDP();
                 esp8266.send(0,buffer, rsplen);
+                //unregUDP();
             }
         }
     }
