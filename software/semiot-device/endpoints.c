@@ -1,15 +1,16 @@
 #include <stdbool.h>
 #include <string.h>
 #include "coap.h"
+#include "coapsettings.h"
 
 #define DHT11_STRING_SIZE 6
 
-static char dht11_t[DHT11_STRING_SIZE];
-static char dht11_h[DHT11_STRING_SIZE];
+static char dht_t[DHT11_STRING_SIZE];
+static char dht_h[DHT11_STRING_SIZE];
 static char light = '0';
-static char* dht11;
-static char* dht11_temperature;
-static char* dht11_humidity;
+static char* dht;
+static char* dht_temperature;
+static char* dht_humidity;
 
 #define RSP_BUFFER_SIZE 108//64
 const uint16_t rsplen = RSP_BUFFER_SIZE;
@@ -70,23 +71,23 @@ static int handle_put_light(coap_rw_buffer_t *scratch, const coap_packet_t *inpk
     }
 }
 
-static const coap_endpoint_path_t path_dht11 = {1, {"dht11"}};
-static const coap_endpoint_path_t path_dht11_temperature = {2,  {"dht11", "temperature"}};
-static const coap_endpoint_path_t path_dht11_humidity = {2,  {"dht11", "humidity"}};
+static const coap_endpoint_path_t path_dht = {1, {DHT_COAP_NAME}};
+static const coap_endpoint_path_t path_dht_temperature = {2,  {DHT_COAP_NAME, "temperature"}};
+static const coap_endpoint_path_t path_dht_humidity = {2,  {DHT_COAP_NAME, "humidity"}};
 
-static int handle_get_dht11(coap_rw_buffer_t *scratch, const coap_packet_t *inpkt, coap_packet_t *outpkt, uint8_t id_hi, uint8_t id_lo)
+static int handle_get_dht(coap_rw_buffer_t *scratch, const coap_packet_t *inpkt, coap_packet_t *outpkt, uint8_t id_hi, uint8_t id_lo)
 {
-    return coap_make_response(scratch, outpkt, (const uint8_t *)dht11, 1, id_hi, id_lo, COAP_RSPCODE_CONTENT, COAP_CONTENTTYPE_TEXT_PLAIN);
+    return coap_make_response(scratch, outpkt, (const uint8_t *)dht, 1, id_hi, id_lo, COAP_RSPCODE_CONTENT, COAP_CONTENTTYPE_TEXT_PLAIN);
 }
 
-static int handle_get_dht11_temperature(coap_rw_buffer_t *scratch, const coap_packet_t *inpkt, coap_packet_t *outpkt, uint8_t id_hi, uint8_t id_lo)
+static int handle_get_dht_temperature(coap_rw_buffer_t *scratch, const coap_packet_t *inpkt, coap_packet_t *outpkt, uint8_t id_hi, uint8_t id_lo)
 {
-    return coap_make_response(scratch, outpkt, (const uint8_t *)dht11_temperature, DHT11_STRING_SIZE, id_hi, id_lo, COAP_RSPCODE_CONTENT, COAP_CONTENTTYPE_TEXT_PLAIN);
+    return coap_make_response(scratch, outpkt, (const uint8_t *)dht_temperature, DHT11_STRING_SIZE, id_hi, id_lo, COAP_RSPCODE_CONTENT, COAP_CONTENTTYPE_TEXT_PLAIN);
 }
 
-static int handle_get_dht11_humidity(coap_rw_buffer_t *scratch, const coap_packet_t *inpkt, coap_packet_t *outpkt, uint8_t id_hi, uint8_t id_lo)
+static int handle_get_dht_humidity(coap_rw_buffer_t *scratch, const coap_packet_t *inpkt, coap_packet_t *outpkt, uint8_t id_hi, uint8_t id_lo)
 {
-    return coap_make_response(scratch, outpkt, (const char *)dht11_humidity, DHT11_STRING_SIZE, id_hi, id_lo, COAP_RSPCODE_CONTENT, COAP_CONTENTTYPE_TEXT_PLAIN);
+    return coap_make_response(scratch, outpkt, (const char *)dht_humidity, DHT11_STRING_SIZE, id_hi, id_lo, COAP_RSPCODE_CONTENT, COAP_CONTENTTYPE_TEXT_PLAIN);
 }
 
 const coap_endpoint_t endpoints[] =
@@ -96,20 +97,20 @@ const coap_endpoint_t endpoints[] =
     {COAP_METHOD_GET, handle_get_light, &path_light, "ct=0"},
     {COAP_METHOD_PUT, handle_put_light, &path_light, NULL},
 
-    {COAP_METHOD_GET, handle_get_dht11, &path_dht11, "ct=0"},
-    {COAP_METHOD_GET, handle_get_dht11_temperature, &path_dht11_temperature, "ct=0"},
+    {COAP_METHOD_GET, handle_get_dht, &path_dht, "ct=0"},
+    {COAP_METHOD_GET, handle_get_dht_temperature, &path_dht_temperature, "ct=0"},
 
-    {COAP_METHOD_GET, handle_get_dht11_humidity, &path_dht11_humidity, "ct=0"},
+    {COAP_METHOD_GET, handle_get_dht_humidity, &path_dht_humidity, "ct=0"},
 
 
     {(coap_method_t)0, NULL, NULL, NULL}
 };
 
-void update_dht11(char* dht11_avaliable, float* humidity, float* temperature)
+void update_dht(char* dht_avaliable, float* humidity, float* temperature)
 {
-    dht11=dht11_avaliable;
-    dht11_temperature=dtostrf(*temperature,1,2,&dht11_t[0]);
-    dht11_humidity=dtostrf(*humidity,1,2,&dht11_h[0]);
+    dht=dht_avaliable;
+    dht_temperature=dtostrf(*temperature,1,2,&dht_t[0]);
+    dht_humidity=dtostrf(*humidity,1,2,&dht_h[0]);
 }
 
 

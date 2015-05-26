@@ -1,26 +1,18 @@
 #include <stdlib.h>
-#include <coap.h> // https://github.com/1248/microcoap
+#include "endpoints.h"
+#include "coap.h" // https://github.com/1248/microcoap
 #include "ESP8266.h" // https://github.com/itead/ITEADLIB_Arduino_WeeESP8266
 //TODO: move to: https://github.com/niesteszeck/idDHT11
 #include "DHT.h" //https://github.com/RobTillaart/Arduino/tree/master/libraries/DHTlib
 
-#define UDP_TX_PACKET_MAX_SIZE 860
+#define UDP_TX_PACKET_MAX_SIZE 860 // TODO: extern to 2048B?
 
-// TODO test:
-#include "wifisettings.h"
+#include "semiotsettings.h"
 
 String HOST_NAME;
-long unsigned int HOST_PORT=5683; //   (5683) // CoAP
 
-// DHT 22
-#define DHTTYPE DHT22   
-#define DHT11_DATA_PIN 2
-
-// Arduino<->ESP8266 Baudrate
-#define BAUDRATE 9600
-
-ESP8266 esp8266(Serial3,BAUDRATE);
-DHT dht11 = DHT(DHT11_DATA_PIN,DHTTYPE);
+ESP8266 esp8266(esp8266_uart,ESP8266_BAUDRATE);
+DHT dht = DHT(DHT_DATA_PIN,DHTTYPE);
 
 void unregUDP()
 {
@@ -158,13 +150,7 @@ void setupESP8266()
         {
             Serial.print("Join AP success\r\n");
             Serial.print("IP: ");
-            HOST_NAME = esp8266.getLocalIP();//.substring(13); // '192.168.4.1\n' -- softAP
-            Serial.println(HOST_NAME);
-            // Broadcast in subnet:
-            // TODO: answer directly to the source:
-            HOST_NAME = HOST_NAME.substring(0,HOST_NAME.lastIndexOf('.'))+String(".255");
-            Serial.print("Going broadcast UDP to: ");
-            Serial.println(HOST_NAME);
+            Serial.println(esp8266.getLocalIP());//.substring(13); // '192.168.4.1\n' -- softAP
             break;
         }
         else
@@ -198,9 +184,9 @@ void setupESP8266()
 
 void setup()
 {
-    Serial.begin(BAUDRATE);
+    Serial.begin(SERIAL_BAUDRATE);
     Serial.print("setup...\r\n");
-    Serial3.begin(BAUDRATE);
+    Serial3.begin(ESP8266_BAUDRATE);
     setupESP8266();
     regUDPServer();
     //regUDP();
@@ -208,7 +194,7 @@ void setup()
     Serial.println(esp8266.getIPStatus());
     coap_setup();
     endpoint_setup();
-    dht11.begin();
+    dht.begin();
 }
 
 void loop()
@@ -218,8 +204,8 @@ void loop()
     // Reading temperature or humidity takes about 250 milliseconds!
     // Sensor readings may also be up to 2 seconds 'old' (its a very slow sensor)
     char d = 0;
-    float h = dht11.readHumidity();
-    float t = dht11.readTemperature();
+    float h = dht.readHumidity();
+    float t = dht.readTemperature();
 
     // check if returns are valid, if they are NaN (not a number) then something went wrong!
     if (isnan(t) || isnan(h))
@@ -240,7 +226,7 @@ void loop()
         Serial.print(t);
         Serial.println(" *C");
     }
-    update_dht11(&d,&h,&t);
+    update_dht(&d,&h,&t);
 
 
     //CoAP:

@@ -7,7 +7,6 @@
 #include "coap.h"
 
 extern void endpoint_setup(void);
-extern void update_dht11(char* dht11_avaliable, float* humidity, float* temperature);
 extern const coap_endpoint_t endpoints[];
 
 #ifdef DEBUG

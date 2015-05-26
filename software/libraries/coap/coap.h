@@ -155,7 +155,6 @@ int coap_make_response(coap_rw_buffer_t *scratch, coap_packet_t *pkt, const uint
 int coap_handle_req(coap_rw_buffer_t *scratch, const coap_packet_t *inpkt, coap_packet_t *outpkt);
 void coap_setup(void);
 void endpoint_setup(void);
-void update_dht11(char* dht11_avaliable, float *humidity, float *temperature);
 
 #ifdef __cplusplus
 }
