@@ -1,15 +1,35 @@
 #include <stdlib.h>
-#include "endpoints.h"
-#include "coap.h" // https://github.com/1248/microcoap
+
+#include "microcoap.h" 
+#include "endpoints.h" // https://github.com/semiotproject/microcoap
 #include "ESP8266.h" // https://github.com/itead/ITEADLIB_Arduino_WeeESP8266
 //TODO: move to: https://github.com/niesteszeck/idDHT11
 #include "DHT.h" //https://github.com/RobTillaart/Arduino/tree/master/libraries/DHTlib
 
 #define UDP_TX_PACKET_MAX_SIZE 860 // TODO: extern to 2048B?
 
-#include "semiotsettings.h"
-
 String HOST_NAME;
+long unsigned int COAP_PORT=5683; // TODO: move to CoAP settings
+
+#include "wifisettings.h"
+#include "coapsettings.h"
+#include "connections.h"
+
+
+
+#ifdef ESP8266_USE_SOFTWARE_SERIAL
+#include "SoftwareSerial.h"
+#else
+#include "HardwareSerial.h"
+#endif
+
+#ifdef ESP8266_USE_SOFTWARE_SERIAL
+    SoftwareSerial &esp8266_uart=Serial3; /* The UART to communicate with ESP8266 */
+#else
+    HardwareSerial &esp8266_uart=Serial3; /* The UART to communicate with ESP8266 */
+#endif
+
+
 
 ESP8266 esp8266(esp8266_uart,ESP8266_BAUDRATE);
 DHT dht = DHT(DHT_DATA_PIN,DHTTYPE);
@@ -36,18 +56,18 @@ void regUDP()
         //Serial.println(HOST_NAME);
         HOST_NAME = HOST_NAME.substring(30); // STATUS:N\n"+CIPSTATUS:N,"UDP","
         //Serial.println(HOST_NAME);
-        HOST_PORT = HOST_NAME.substring(HOST_NAME.indexOf(',')+1,HOST_NAME.lastIndexOf(',')).toInt();
+        COAP_PORT = HOST_NAME.substring(HOST_NAME.indexOf(',')+1,HOST_NAME.lastIndexOf(',')).toInt();
         //Serial.println("");
         //Serial.println(HOST_NAME);
-        //Serial.println(HOST_PORT);
+        //Serial.println(COAP_PORT);
         //Serial.println("");
         HOST_NAME = HOST_NAME.substring(0,HOST_NAME.indexOf('"'));
         
         Serial.println(HOST_NAME);
-        Serial.println(HOST_PORT);
+        Serial.println(COAP_PORT);
 
         
-        if (esp8266.registerUDP(3,HOST_NAME, uint32_t(HOST_PORT)))
+        if (esp8266.registerUDP(3,HOST_NAME, uint32_t(COAP_PORT)))
         {
             Serial.println("register udp ok");
             break;
@@ -80,7 +100,7 @@ void regUDPServer()
 {
     while (1) {
         Serial.println("Try to start server");
-        if (esp8266.startServer(uint32_t(HOST_PORT)))
+        if (esp8266.startServer(uint32_t(COAP_PORT)))
         {
             Serial.println("ok");
             break;

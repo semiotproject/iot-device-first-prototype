@@ -1,1 +1,3 @@
 .directory
+# wifi-settings
+./software/semiot-device/wifisettings.h

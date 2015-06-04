@@ -1,24 +1,25 @@
-#ifndef COAP_H
-#define COAP_H 1
+#ifndef MICROCOAP_H
+#define MICROCOAP_H 1
 
 #ifdef __cplusplus
-extern "C" {
+extern "C" {    
 #endif
 
-//#define ARDUINO 1
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
 
 #define MAXOPT 16
 
-// http://tools.ietf.org/html/draft-ietf-core-coap-18#section-3
+//http://tools.ietf.org/html/rfc7252#section-3
 typedef struct
 {
-    uint8_t ver;
-    uint8_t t;
-    uint8_t tkl;
-    uint8_t code;
+    uint8_t ver;                /* CoAP version number */
+    uint8_t t;                  /* CoAP Message Type */
+    uint8_t tkl;                /* Token length: indicates length of the Token field */
+    uint8_t code;               /* CoAP status code. Can be request (0.xx), success reponse (2.xx), 
+                                 * client error response (4.xx), or rever error response (5.xx) 
+                                 * For possible values, see http://tools.ietf.org/html/rfc7252#section-12.1 */
     uint8_t id[2];
 } coap_header_t;
 
@@ -36,28 +37,30 @@ typedef struct
 
 typedef struct
 {
-    uint8_t num;
-    coap_buffer_t buf;
+    uint8_t num;                /* Option number. See http://tools.ietf.org/html/rfc7252#section-5.10 */
+    coap_buffer_t buf;          /* Option value */
 } coap_option_t;
 
 typedef struct
 {
-    coap_header_t hdr;
-    coap_buffer_t tok;
-    uint8_t numopts;
-    coap_option_t opts[MAXOPT];
-    coap_buffer_t payload;
+    coap_header_t hdr;          /* Header of the packet */
+    coap_buffer_t tok;          /* Token value, size as specified by hdr.tkl */
+    uint8_t numopts;            /* Number of options */
+    coap_option_t opts[MAXOPT]; /* Options of the packet. For possible entries see
+                                 * http://tools.ietf.org/html/rfc7252#section-5.10 */
+    coap_buffer_t payload;      /* Payload carried by the packet */
 } coap_packet_t;
 
 /////////////////////////////////////////
 
-//http://tools.ietf.org/html/draft-ietf-core-coap-18#section-12.2
+//http://tools.ietf.org/html/rfc7252#section-12.2
 typedef enum
 {
     COAP_OPTION_IF_MATCH = 1,
     COAP_OPTION_URI_HOST = 3,
     COAP_OPTION_ETAG = 4,
     COAP_OPTION_IF_NONE_MATCH = 5,
+    COAP_OPTION_OBSERVE = 6,
     COAP_OPTION_URI_PORT = 7,
     COAP_OPTION_LOCATION_PATH = 8,
     COAP_OPTION_URI_PATH = 11,
@@ -70,7 +73,7 @@ typedef enum
     COAP_OPTION_PROXY_SCHEME = 39
 } coap_option_num_t;
 
-//http://tools.ietf.org/html/draft-ietf-core-coap-18#section-12.1.1
+//http://tools.ietf.org/html/rfc7252#section-12.1.1
 typedef enum
 {
     COAP_METHOD_GET = 1,
@@ -79,7 +82,7 @@ typedef enum
     COAP_METHOD_DELETE = 4
 } coap_method_t;
 
-//http://tools.ietf.org/html/draft-ietf-core-coap-18#section-12.1.1
+//http://tools.ietf.org/html/rfc7252#section-12.1.1
 typedef enum
 {
     COAP_TYPE_CON = 0,
@@ -88,8 +91,8 @@ typedef enum
     COAP_TYPE_RESET = 3
 } coap_msgtype_t;
 
-//http://tools.ietf.org/html/draft-ietf-core-coap-18#section-5.2
-//http://tools.ietf.org/html/draft-ietf-core-coap-18#section-12.1.2
+//http://tools.ietf.org/html/rfc7252#section-5.2
+//http://tools.ietf.org/html/rfc7252#section-12.1.2
 #define MAKE_RSPCODE(clas, det) ((clas << 5) | (det))
 typedef enum
 {
@@ -99,7 +102,7 @@ typedef enum
     COAP_RSPCODE_CHANGED = MAKE_RSPCODE(2, 4)
 } coap_responsecode_t;
 
-//http://tools.ietf.org/html/draft-ietf-core-coap-18#section-12.3
+//http://tools.ietf.org/html/rfc7252#section-12.3
 typedef enum
 {
     COAP_CONTENTTYPE_NONE = -1, // bodge to allow us not to send option block
@@ -137,10 +140,16 @@ typedef struct
 
 typedef struct
 {
-    coap_method_t method;
-    coap_endpoint_func handler;
-    const coap_endpoint_path_t *path;
-    const char *core_attr;
+    coap_method_t method;               /* (i.e. POST, PUT or GET) */
+    coap_endpoint_func handler;         /* callback function which handles this 
+                                         * type of endpoint (and calls 
+                                         * coap_make_response() at some point) */
+    const coap_endpoint_path_t *path;   /* path towards a resource (i.e. foo/bar/) */ 
+    const char *core_attr;              /* the 'ct' attribute, as defined in RFC7252, section 7.2.1.:
+                                         * "The Content-Format code "ct" attribute 
+                                         * provides a hint about the 
+                                         * Content-Formats this resource returns." 
+                                         * (Section 12.3. lists possible ct values.) */
 } coap_endpoint_t;
 
 
@@ -151,8 +160,9 @@ int coap_buffer_to_string(char *strbuf, size_t strbuflen, const coap_buffer_t *b
 const coap_option_t *coap_findOptions(const coap_packet_t *pkt, uint8_t num, uint8_t *count);
 int coap_build(uint8_t *buf, size_t *buflen, const coap_packet_t *pkt);
 void coap_dump(const uint8_t *buf, size_t buflen, bool bare);
-int coap_make_response(coap_rw_buffer_t *scratch, coap_packet_t *pkt, const uint8_t *content, size_t content_len, uint8_t msgid_hi, uint8_t msgid_lo, coap_responsecode_t rspcode, coap_content_type_t content_type);
+int coap_make_response(coap_rw_buffer_t *scratch, coap_packet_t *pkt, const uint8_t *content, size_t content_len, uint8_t msgid_hi, uint8_t msgid_lo, const coap_buffer_t* tok, coap_responsecode_t rspcode, coap_content_type_t content_type);
 int coap_handle_req(coap_rw_buffer_t *scratch, const coap_packet_t *inpkt, coap_packet_t *outpkt);
+void coap_option_nibble(uint32_t value, uint8_t *nibble);
 void coap_setup(void);
 void endpoint_setup(void);
 
