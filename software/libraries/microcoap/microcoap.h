@@ -131,7 +131,10 @@ typedef enum
 ///////////////////////
 
 typedef int (*coap_endpoint_func)(coap_rw_buffer_t *scratch, const coap_packet_t *inpkt, coap_packet_t *outpkt, uint8_t id_hi, uint8_t id_lo);
+
+// TODO: move to CoAP settings:
 #define MAX_SEGMENTS 2  // 2 = /foo/bar, 3 = /foo/bar/baz
+
 typedef struct
 {
     int count;
@@ -149,7 +152,7 @@ typedef struct
                                          * "The Content-Format code "ct" attribute 
                                          * provides a hint about the 
                                          * Content-Formats this resource returns." 
-                                         * (Section 12.3. lists possible ct values.) */
+                                         * (Section 12.3. lists possible ct values.) */                                   
 } coap_endpoint_t;
 
 

@@ -7,14 +7,18 @@
 #include "coapsettings.h"
 #include "wifisettings.h"
 
-#define DHT11_STRING_SIZE 6
+// TODO: move to CoAP settings:
+#define OBS_RES_MAX 1 // max number of the observed resourses
+#define DHT_STRING_SIZE 6
 
-static char dht_t[DHT11_STRING_SIZE];
-static char dht_h[DHT11_STRING_SIZE];
+static char dht_t[DHT_STRING_SIZE];
+static char dht_h[DHT_STRING_SIZE];
 static char light = '0';
 static char* dht;
 static char* dht_temperature;
 static char* dht_humidity;
+
+coap_endpoint_path_t obs_path_list[OBS_RES_MAX];
 
 #define RSP_BUFFER_SIZE 108//64
 const uint16_t rsplen = RSP_BUFFER_SIZE;
@@ -85,17 +89,17 @@ static int handle_get_dht(coap_rw_buffer_t *scratch, const coap_packet_t *inpkt,
 
 static int handle_get_dht_temperature(coap_rw_buffer_t *scratch, const coap_packet_t *inpkt, coap_packet_t *outpkt, uint8_t id_hi, uint8_t id_lo)
 {
-    return coap_make_response(scratch, outpkt, (const uint8_t *)dht_temperature, DHT11_STRING_SIZE, id_hi, id_lo, &inpkt->tok, COAP_RSPCODE_CONTENT, COAP_CONTENTTYPE_TEXT_PLAIN);
+    return coap_make_response(scratch, outpkt, (const uint8_t *)dht_temperature, DHT_STRING_SIZE, id_hi, id_lo, &inpkt->tok, COAP_RSPCODE_CONTENT, COAP_CONTENTTYPE_TEXT_PLAIN);
 }
 
 static int handle_get_dht_humidity(coap_rw_buffer_t *scratch, const coap_packet_t *inpkt, coap_packet_t *outpkt, uint8_t id_hi, uint8_t id_lo)
 {
-    return coap_make_response(scratch, outpkt, (const char *)dht_humidity, DHT11_STRING_SIZE, id_hi, id_lo, &inpkt->tok, COAP_RSPCODE_CONTENT, COAP_CONTENTTYPE_TEXT_PLAIN);
+    return coap_make_response(scratch, outpkt, (const char *)dht_humidity, DHT_STRING_SIZE, id_hi, id_lo, &inpkt->tok, COAP_RSPCODE_CONTENT, COAP_CONTENTTYPE_TEXT_PLAIN);
 }
 
 const coap_endpoint_t endpoints[] =
 {
-    {COAP_METHOD_GET, handle_get_well_known_core, &path_well_known_core, "ct=40"}, // Do we really need this?
+    {COAP_METHOD_GET, handle_get_well_known_core, &path_well_known_core, "ct=40"},
 
     {COAP_METHOD_GET, handle_get_light, &path_light, "ct=0"},
     {COAP_METHOD_PUT, handle_put_light, &path_light, NULL},

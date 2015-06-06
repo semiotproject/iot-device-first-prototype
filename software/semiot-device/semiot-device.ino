@@ -3,13 +3,15 @@
 #include "microcoap.h" 
 #include "endpoints.h" // https://github.com/semiotproject/microcoap
 #include "ESP8266.h" // https://github.com/itead/ITEADLIB_Arduino_WeeESP8266
-//TODO: move to: https://github.com/niesteszeck/idDHT11
+//TODO: move to some other lib with interruprion, maybe to this one: https://github.com/niesteszeck/idDHT11
 #include "DHT.h" //https://github.com/RobTillaart/Arduino/tree/master/libraries/DHTlib
 
 #define UDP_TX_PACKET_MAX_SIZE 860 // TODO: extern to 2048B?
 
 String HOST_NAME;
 long unsigned int COAP_PORT=5683; // TODO: move to CoAP settings
+
+
 
 #include "wifisettings.h"
 #include "coapsettings.h"
@@ -234,7 +236,6 @@ void loop()
         h = 0;
         t = 0;
         Serial.println("Failed to read from DHT");
-
     }
     else
     {
@@ -299,7 +300,7 @@ void loop()
                 Serial.print("]\r\n");
                 regUDP();
                 esp8266.send(0,buffer, rsplen);
-                //unregUDP();
+                // unregUDP(); -- FIXME: firmware bug
             }
         }
     }
