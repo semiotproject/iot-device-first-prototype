@@ -1,10 +1,11 @@
 #include <stdlib.h>
+#include "ESP8266.h" // https://github.com/itead/ITEADLIB_Arduino_WeeESP8266
+
+//TODO: move to some other lib with interruprion, maybe to this one: https://github.com/niesteszeck/idDHT11
+#include "DHT.h" //https://github.com/RobTillaart/Arduino/tree/master/libraries/DHTlib
 
 #include "microcoap.h" 
 #include "endpoints.h" // https://github.com/semiotproject/microcoap
-#include "ESP8266.h" // https://github.com/itead/ITEADLIB_Arduino_WeeESP8266
-//TODO: move to some other lib with interruprion, maybe to this one: https://github.com/niesteszeck/idDHT11
-#include "DHT.h" //https://github.com/RobTillaart/Arduino/tree/master/libraries/DHTlib
 
 #define UDP_TX_PACKET_MAX_SIZE 860 // TODO: extern to 2048B?
 
@@ -14,27 +15,26 @@ long unsigned int COAP_PORT=5683; // TODO: move to CoAP settings
 
 
 #include "wifisettings.h"
-#include "coapsettings.h"
-#include "connections.h"
 
 
+HardwareSerial &esp8266_uart=Serial3; /* The UART to communicate with ESP8266 */
 
-#ifdef ESP8266_USE_SOFTWARE_SERIAL
-#include "SoftwareSerial.h"
-#else
-#include "HardwareSerial.h"
-#endif
 
-#ifdef ESP8266_USE_SOFTWARE_SERIAL
-    SoftwareSerial &esp8266_uart=Serial3; /* The UART to communicate with ESP8266 */
-#else
-    HardwareSerial &esp8266_uart=Serial3; /* The UART to communicate with ESP8266 */
-#endif
-
+// #ifdef ESP8266_USE_SOFTWARE_SERIAL
+// #include "SoftwareSerial.h"
+// #else
+// #include "HardwareSerial.h"
+// #endif
+// 
+// #ifdef ESP8266_USE_SOFTWARE_SERIAL
+//     SoftwareSerial &esp8266_uart=Serial3; /* The UART to communicate with ESP8266 */
+// #else
+//     HardwareSerial &esp8266_uart=Serial3; /* The UART to communicate with ESP8266 */
+// #endif
 
 
 ESP8266 esp8266(esp8266_uart,ESP8266_BAUDRATE);
-DHT dht = DHT(DHT_DATA_PIN,DHTTYPE);
+DHT dhtSensor = DHT(DHT_DATA_PIN,DHTTYPE);
 
 void unregUDP()
 {
@@ -216,7 +216,7 @@ void setup()
     Serial.println(esp8266.getIPStatus());
     coap_setup();
     endpoint_setup();
-    dht.begin();
+    dhtSensor.begin();
 }
 
 void loop()
@@ -226,8 +226,8 @@ void loop()
     // Reading temperature or humidity takes about 250 milliseconds!
     // Sensor readings may also be up to 2 seconds 'old' (its a very slow sensor)
     char d = 0;
-    float h = dht.readHumidity();
-    float t = dht.readTemperature();
+    float h = dhtSensor.readHumidity();
+    float t = dhtSensor.readTemperature();
 
     // check if returns are valid, if they are NaN (not a number) then something went wrong!
     if (isnan(t) || isnan(h))
