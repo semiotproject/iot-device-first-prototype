@@ -6,11 +6,13 @@
 
 #include "microcoap.h" 
 #include "endpoints.h" // https://github.com/semiotproject/microcoap
+#include "observers.h"
+
 
 #define UDP_TX_PACKET_MAX_SIZE 860 // TODO: extern to 2048B?
 
 String HOST_NAME;
-long unsigned int COAP_PORT=5683; // TODO: move to CoAP settings
+long unsigned int COAP_PORT=5683;
 
 
 
@@ -219,10 +221,9 @@ void setup()
     dhtSensor.begin();
 }
 
-void loop()
+//DHT Sensor
+void refreshDHTSensor()
 {
-    //DHT11:
-
     // Reading temperature or humidity takes about 250 milliseconds!
     // Sensor readings may also be up to 2 seconds 'old' (its a very slow sensor)
     char d = 0;
@@ -248,10 +249,12 @@ void loop()
         Serial.println(" *C");
     }
     update_dht(&d,&h,&t);
+}
 
 
-    //CoAP:
 
+void refreshCoAP()
+{
     uint8_t buffer[UDP_TX_PACKET_MAX_SIZE] = {0}; // recieve and send buffer
 
     uint32_t len = esp8266.recv(buffer, sizeof(buffer), 1000);
@@ -304,4 +307,11 @@ void loop()
             }
         }
     }
+}
+
+void loop()
+{
+    refreshDHTSensor();
+    refreshCoAP();
+    
 }

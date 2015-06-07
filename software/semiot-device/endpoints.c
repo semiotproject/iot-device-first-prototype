@@ -115,3 +115,9 @@ void build_rsp(void)
     }
 }
 
+void build_obs_res(void)
+{
+    obs_res_count = 2;
+    obs_res_list[0]= &path_dht_temperature;
+    obs_res_list[1]= &path_dht_humidity;
+}

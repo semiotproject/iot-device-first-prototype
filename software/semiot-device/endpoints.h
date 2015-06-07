@@ -10,7 +10,6 @@ extern "C" {
 #include "connections.h"
 #include "microcoap.h"
 
-#define OBS_RES_MAX 1 // max number of the observed resourses
 #define DHT_STRING_SIZE 6
 
 #define DHT_COAP_NAME "dht11"
@@ -22,8 +21,6 @@ static char light = '0';
 static char* dht;
 static char* dht_temperature;
 static char* dht_humidity;
-
-coap_endpoint_path_t obs_path_list[OBS_RES_MAX];
 
 #define RSP_BUFFER_SIZE 108//64
 const uint16_t rsplen = RSP_BUFFER_SIZE;
@@ -66,10 +63,17 @@ const coap_endpoint_t endpoints[] =
     {(coap_method_t)0, NULL, NULL, NULL}
 };
 
+#define OBS_RES_MAX_COUNT 2
+unsigned int obs_res_count;
+const coap_endpoint_path_t* obs_res_list[OBS_RES_MAX_COUNT];
+
+
+
 void update_dht(char* dht_avaliable, float* humidity, float* temperature);
 
 
 void build_rsp(void);
+void build_obs_res_list(void);
 
 #ifdef __cplusplus
 }

@@ -8,7 +8,7 @@ extern "C" {
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
-
+    
 #define MAXOPT 16
 
 //http://tools.ietf.org/html/rfc7252#section-3
@@ -132,7 +132,7 @@ typedef enum
 
 typedef int (*coap_endpoint_func)(coap_rw_buffer_t *scratch, const coap_packet_t *inpkt, coap_packet_t *outpkt, uint8_t id_hi, uint8_t id_lo);
 
-#define MAX_SEGMENTS 2 // FIXME: move to endpoint.h
+#define MAX_SEGMENTS 2 // FIXME: move to endpoints.h
 
 typedef struct
 {

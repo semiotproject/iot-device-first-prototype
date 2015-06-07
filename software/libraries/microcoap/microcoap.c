@@ -426,6 +426,8 @@ next:
     return 0;
 }
 
+
+
 void coap_setup(void)
 {
 }
