@@ -16,8 +16,9 @@
 // DHT21 21
 // AM2301 21
 #define DHT_CONNECTED //TODO:
-#define DHTTYPE DHT11   
+#define DHTTYPE DHT22   
 #define DHT_DATA_PIN 2
+#define DHT_DATA_UPDATE_PERIOD 2000000 // 2 seconds, mega2560
 
 // LED
 #define LED_PIN 13

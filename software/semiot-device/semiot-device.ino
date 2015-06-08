@@ -1,4 +1,7 @@
 #include <stdlib.h>
+#include "TimerThree.h" // https://github.com/PaulStoffregen/TimerThree
+
+
 #include "ESP8266.h" // https://github.com/itead/ITEADLIB_Arduino_WeeESP8266
 
 //TODO: move to some other lib with interruprion, maybe to this one: https://github.com/niesteszeck/idDHT11
@@ -11,6 +14,7 @@
 
 #define UDP_TX_PACKET_MAX_SIZE 860 // TODO: extern to 2048B?
 
+// current client's host name and port
 String HOST_NAME;
 long unsigned int COAP_PORT=5683;
 
@@ -38,10 +42,51 @@ HardwareSerial &esp8266_uart=Serial3; /* The UART to communicate with ESP8266 */
 ESP8266 esp8266(esp8266_uart,ESP8266_BAUDRATE);
 DHT dhtSensor = DHT(DHT_DATA_PIN,DHTTYPE);
 
-void unregUDP()
+String cstrtToString(char* buffer, unsigned int bufferPos)
 {
-    // mux_id=0:
-    if (esp8266.unregisterUDP(3)) {
+    String item;
+    unsigned int k;
+    for(int k=0; k<bufferPos; k++){
+        item += String(buffer[k]);
+        
+    }
+    return item;
+}
+
+// refresh client's host name and port
+void refreshClientInfo()
+{
+    // TODO:
+    if (0) {
+        
+    String hostName;
+    long unsigned int port;
+    Serial.println("new refreshing info:");
+    // STATUS:N\n"+CIPSTATUS:N,"UDP","192.168.43.178",5683,N"
+    // HOST_NAME.substring(0,HOST_NAME.lastIndexOf('.'))+String(".255");
+    hostName = esp8266.getIPStatus();
+    Serial.println(hostName);
+    //Serial.println(HOST_NAME);
+    hostName = hostName.substring(30); // STATUS:N\n"+CIPSTATUS:N,"UDP","
+    //Serial.println(HOST_NAME);
+    port = HOST_NAME.substring(HOST_NAME.indexOf(',')+1,HOST_NAME.lastIndexOf(',')).toInt();
+    //Serial.println("");
+    //Serial.println(HOST_NAME);
+    //Serial.println(COAP_PORT);
+    //Serial.println("");
+    hostName = hostName.substring(0,HOST_NAME.indexOf('"'));
+    Serial.println(hostName);
+    Serial.println(port);
+    Serial.println("");
+    HOST_NAME=hostName;
+    COAP_PORT=port;
+    
+    }
+}
+
+void unregUDP(uint8_t _mux_id)
+{
+    if (esp8266.unregisterUDP(_mux_id)) {
         Serial.print("unregister udp ok\r\n");
     }
     else {
@@ -49,36 +94,23 @@ void unregUDP()
     }
 }
 
-void regUDP()
+void regUDP(uint8_t _mux_id, String _hostName="",long unsigned int _port=0)
 {
-    // mux_id=0:
     while (1) {
         Serial.println("Trying to register UDP");
-        // STATUS:N\n"+CIPSTATUS:N,"UDP","192.168.43.178",5683,N"
-        // HOST_NAME.substring(0,HOST_NAME.lastIndexOf('.'))+String(".255");
-        HOST_NAME = esp8266.getIPStatus();
-        //Serial.println(HOST_NAME);
-        HOST_NAME = HOST_NAME.substring(30); // STATUS:N\n"+CIPSTATUS:N,"UDP","
-        //Serial.println(HOST_NAME);
-        COAP_PORT = HOST_NAME.substring(HOST_NAME.indexOf(',')+1,HOST_NAME.lastIndexOf(',')).toInt();
-        //Serial.println("");
-        //Serial.println(HOST_NAME);
-        //Serial.println(COAP_PORT);
-        //Serial.println("");
-        HOST_NAME = HOST_NAME.substring(0,HOST_NAME.indexOf('"'));
         
         Serial.println(HOST_NAME);
         Serial.println(COAP_PORT);
 
         
-        if (esp8266.registerUDP(3,HOST_NAME, uint32_t(COAP_PORT)))
+        if (esp8266.registerUDP(_mux_id,_hostName, uint32_t(_port)))
         {
             Serial.println("register udp ok");
             break;
         }
         else {
             Serial.println("Failed to register UDP");
-            //unregUDP();
+            //unregUDP(_mux_id); // FIXME: firmware bug?
             Serial.println("Wait 5 seconds and try again...");
             delay(5000);
         }
@@ -106,6 +138,8 @@ void regUDPServer()
         Serial.println("Try to start server");
         if (esp8266.startServer(uint32_t(COAP_PORT)))
         {
+            // FIXME: hardcoded mux_id
+            regUDP(0,String("192.168.1.14"),COAP_PORT);
             Serial.println("ok");
             break;
         }
@@ -205,20 +239,50 @@ void setupESP8266()
     Serial.print("setup end\r\n");
 }
 
-
-void setup()
+void sendCoAPpkt(uint8_t mux_id, coap_packet_t* pkt_p, String hostName="",long unsigned int port=0)
 {
-    Serial.begin(SERIAL_BAUDRATE);
-    Serial.print("setup...\r\n");
-    Serial3.begin(ESP8266_BAUDRATE);
-    setupESP8266();
-    regUDPServer();
-    //regUDP();
-    Serial.println("Setup status:");
-    Serial.println(esp8266.getIPStatus());
-    coap_setup();
-    endpoint_setup();
-    dhtSensor.begin();
+    int rc;
+            
+    uint8_t buffer[UDP_TX_PACKET_MAX_SIZE] = {0}; // recieve and send buffer
+    static uint8_t scratch_raw[UDP_TX_PACKET_MAX_SIZE];
+static coap_rw_buffer_t scratch_buf = {scratch_raw, sizeof(scratch_raw)};
+    
+    size_t rsplen = sizeof(buffer);
+
+    coap_packet_t rsppkt;
+    coap_handle_req(&scratch_buf, pkt_p, &rsppkt);
+
+    if (0 != (rc = coap_build(buffer, &rsplen, &rsppkt)))
+    {
+        Serial.print("coap_build failed rc=");
+        Serial.println(rc, DEC);
+    }
+    else
+    {
+        Serial.print("Answer ready:[");
+        for(uint32_t i = 0; i < rsplen; i++)
+        {
+            Serial.print(buffer[i],HEX);
+            Serial.print(' ');
+        }
+        Serial.print("]\r\n");
+        regUDP(mux_id,hostName,port);
+        esp8266.send(3,buffer, rsplen);
+        // unregUDP(mux_id,hostName,port); -- FIXME: firmware bug?
+    }
+    
+}
+
+void sendToObservers()
+{
+    int i;
+    if (observersCount>0)
+    {
+        for (i=0;i<observersCount;i++) {
+            // FIXME: hardcoded 4th mux_id
+            sendCoAPpkt(4,&observers[i].pkt,cstrtToString(observers[i].hostName,observers[i].hostNameLenght),observers[i].port);        
+        }
+    }
 }
 
 //DHT Sensor
@@ -249,9 +313,26 @@ void refreshDHTSensor()
         Serial.println(" *C");
     }
     update_dht(&d,&h,&t);
+    
 }
 
 
+void setup()
+{
+    Serial.begin(SERIAL_BAUDRATE);
+    Serial.print("setup...\r\n");
+    Serial3.begin(ESP8266_BAUDRATE);
+    setupESP8266();
+    regUDPServer();
+    Serial.println("Setup status:");
+    Serial.println(esp8266.getIPStatus());
+    coap_setup();
+    endpoint_setup();
+    dhtSensor.begin();
+    refreshDHTSensor();
+    Timer3.initialize(DHT_DATA_UPDATE_PERIOD);         // initialize timer3, and set a 2 seconds period
+    Timer3.attachInterrupt(refreshDHTSensor);  // attaches refreshDHTSensor() as a timer overflow interrupt
+}
 
 void refreshCoAP()
 {
@@ -272,8 +353,6 @@ void refreshCoAP()
 
         int rc;
         coap_packet_t pkt;
-        static uint8_t scratch_raw[UDP_TX_PACKET_MAX_SIZE];
-        static coap_rw_buffer_t scratch_buf = {scratch_raw, sizeof(scratch_raw)};
 
         if (0 != (rc = coap_parse(&pkt, buffer, len)))
         {
@@ -282,36 +361,41 @@ void refreshCoAP()
         }
         else
         {
-            size_t rsplen = sizeof(buffer);
-
-            coap_packet_t rsppkt;
-            coap_handle_req(&scratch_buf, &pkt, &rsppkt);
-
-            if (0 != (rc = coap_build(buffer, &rsplen, &rsppkt)))
+            refreshClientInfo();
+            // cheking for observe:
+            int optionNumber;
+            
+            coap_buffer_t* val = NULL;
+            
+            for (optionNumber=0;optionNumber<pkt.numopts;optionNumber++)
             {
-                Serial.print("coap_build failed rc=");
-                Serial.println(rc, DEC);
-            }
-            else
-            {
-                Serial.print("Answer ready:[");
-                for(uint32_t i = 0; i < rsplen; i++)
+                coap_option_t* currentOption = &pkt.opts[optionNumber];
+                if (currentOption->num==6)
                 {
-                    Serial.print(buffer[i],HEX);
-                    Serial.print(' ');
+                    val = &currentOption->buf;
+                    break;
                 }
-                Serial.print("]\r\n");
-                regUDP();
-                esp8266.send(0,buffer, rsplen);
-                // unregUDP(); -- FIXME: firmware bug
             }
+            
+            if (val!=NULL) {
+                // http://tools.ietf.org/html/draft-ietf-core-observe-16#section-2
+                // FIXME: bad comparison types:
+                if (*val->p==0) { // register
+                    addCoAPObserver(HOST_NAME.c_str(),HOST_NAME.length(),COAP_PORT,pkt);
+                    Serial.print("subscribe ok");
+                }
+                if (*val->p==1) { // deregister
+                }
+                
+            }
+            
+            // FIXME: hardcoded 3 mux_id
+            sendCoAPpkt(3, &pkt,HOST_NAME,COAP_PORT);
         }
     }
 }
 
 void loop()
 {
-    refreshDHTSensor();
     refreshCoAP();
-    
 }

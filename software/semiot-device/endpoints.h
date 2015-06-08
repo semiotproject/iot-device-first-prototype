@@ -12,7 +12,7 @@ extern "C" {
 
 #define DHT_STRING_SIZE 6
 
-#define DHT_COAP_NAME "dht11"
+#define DHT_COAP_NAME "dht22"
 #define MAX_SEGMENTS 2  // 2 = /foo/bar, 3 = /foo/bar/baz // FIXME: get rid of microcoap.h definition
     
 static char dht_t[DHT_STRING_SIZE];

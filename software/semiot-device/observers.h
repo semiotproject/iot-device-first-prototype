@@ -19,15 +19,15 @@ typedef struct
     char* hostName;
     unsigned int hostNameLenght;
     long unsigned int port;
-    coap_buffer_t tok;          /* Token value */
-    uint8_t tkl;                /* Token length: indicates length of the Token field */
+    coap_packet_t pkt;
 } coap_observer_t;
 
 static unsigned long int observersCount=0;
 coap_observer_t observers[MAX_OBSERVERS_COUNT];
 
-int addCoAPObserver(char* hostName,unsigned int hostNameLenght, long unsigned int port, coap_buffer_t tok, uint8_t tkl);
-int removeCoApObserver(unsigned int observerIndex);    
+int addCoAPObserver(const char* hostName,unsigned int hostNameLenght, long unsigned int port, coap_packet_t pkt);
+//int removeCoApObserver(unsigned int observerIndex);   
+int removeCoApObserver(const char* hostName,unsigned int hostNameLenght, long unsigned int port, coap_packet_t pkt);
     
 #ifdef __cplusplus
 }
