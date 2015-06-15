@@ -1,6 +1,6 @@
 .directory
 *~
 # wifi-settings
-software/semiot-device/wifisettings.h
+src/wifisettings.h
 # builds
-software/semiot-device/build*
+bin
