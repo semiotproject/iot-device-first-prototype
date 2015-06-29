@@ -14,6 +14,7 @@ extern "C" {
 
 // http://tools.ietf.org/html/draft-ietf-core-observe-16
 
+// TODO: rewrite completely!!1
 typedef struct
 {
     char* hostName;
@@ -22,12 +23,13 @@ typedef struct
     coap_packet_t pkt;
 } coap_observer_t;
 
-static unsigned long int observersCount=0;
+static unsigned long int observersCount;
 coap_observer_t observers[MAX_OBSERVERS_COUNT];
 
 int addCoAPObserver(const char* hostName,unsigned int hostNameLenght, long unsigned int port, coap_packet_t pkt);
 //int removeCoApObserver(unsigned int observerIndex);   
 int removeCoApObserver(const char* hostName,unsigned int hostNameLenght, long unsigned int port, coap_packet_t pkt);
+unsigned int getObserversCount(); //TODO: get rid of
     
 #ifdef __cplusplus
 }

@@ -57,7 +57,7 @@ const coap_endpoint_t endpoints[] =
     {COAP_METHOD_GET, handle_get_dht, &path_dht, "ct=0"},
     {COAP_METHOD_GET, handle_get_dht_temperature, &path_dht_temperature, "ct=0"},
 
-    {COAP_METHOD_GET, handle_get_dht_humidity, &path_dht_humidity, "ct=0"},
+    {COAP_METHOD_GET, handle_get_dht_humidity, &path_dht_humidity, "ct=0;obs"},
 
 
     {(coap_method_t)0, NULL, NULL, NULL}
@@ -69,7 +69,7 @@ const coap_endpoint_path_t* obs_res_list[OBS_RES_MAX_COUNT];
 
 
 
-void update_dht(char* dht_avaliable, float* humidity, float* temperature);
+void setup_dht_endpoint(char* dht_avaliable, float* humidity, float* temperature);
 
 
 void build_rsp(void);

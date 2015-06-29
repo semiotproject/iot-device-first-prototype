@@ -7,16 +7,17 @@
 //TODO: move to some other lib with interruprion, maybe to this one: https://github.com/niesteszeck/idDHT11
 #include "DHT.h" //https://github.com/RobTillaart/Arduino/tree/master/libraries/DHTlib
 
+//#define DEBUG
+
 #include "microcoap.h"
 #include "endpoints.h" // https://github.com/semiotproject/microcoap
 #include "observers.h"
-
 
 #define UDP_TX_PACKET_MAX_SIZE 860 // TODO: extern to 2048B?
 
 // current client's host name and port
 String HOST_NAME;
-long unsigned int COAP_PORT = 5683;
+long unsigned int HOST_PORT = 5683;
 
 
 
@@ -41,6 +42,11 @@ HardwareSerial &esp8266_uart = Serial3; /* The UART to communicate with ESP8266 
 
 ESP8266 esp8266(esp8266_uart, ESP8266_BAUDRATE);
 DHT dhtSensor = DHT(DHT_DATA_PIN, DHTTYPE);
+char d = 0;
+float h = 0;
+float t = 0;
+
+unsigned long tick=0;
 
 String cstrToString(char* buffer, unsigned int bufferPos)
 {
@@ -54,28 +60,32 @@ String cstrToString(char* buffer, unsigned int bufferPos)
 }
 
 // refresh client's host name and port
-// 0: ESP8266 runs as client
-// 1: ESP8266 runs as server
-void refreshClientInfo(const char * forClient)
+// TODO: check tetype too
+void refreshClientInfo(const unsigned int mux_id)
 {
-  // +CIPSTATUS:id,type,addr,port,tetype
-  Serial.println("refreshing...");
-  String ipStatus = esp8266.getIPStatus();
-  Serial.println(ipStatus); // TODO: check while not avaliable
-  ipStatus = ipStatus.substring(ipStatus.lastIndexOf("+CIPSTATUS:1,\"UDP\",\"")+20);
+  //Serial.println("refreshing...");
+  String ipStatus = esp8266.getIPStatus(); // TODO: check while not avaliable
+  //Serial.println(ipStatus); 
+  String searchString = "+CIPSTATUS:"+String(mux_id)+",\"UDP\",\"";
+  //Serial.println(searchString);
+  ipStatus = ipStatus.substring(ipStatus.lastIndexOf(searchString)+searchString.length());
   String host = ipStatus.substring(0,ipStatus.indexOf("\""));
-  Serial.println(host);
-  String port = ipStatus.substring(ipStatus.indexOf(",")+1,ipStatus.lastIndexOf(",")-1);
-  Serial.println(port);
-  Serial.println("...");
+  //Serial.println(host);
+  ipStatus = ipStatus.substring(host.length()+2); // ",
+  String port = ipStatus.substring(0,ipStatus.indexOf(","));
+  //Serial.println(port);
+  //Serial.println("...");
   HOST_NAME = host;
-  COAP_PORT = port.toInt();
+  HOST_PORT = port.toInt();
 }
 
+// FIXME: get rid of:
+/*
 void unregUDP(uint8_t _mux_id)
 {
   if (esp8266.unregisterUDP(_mux_id)) {
     Serial.print("unregister udp ok\r\n");
+  Serial.println(esp8266.getIPStatus());
   }
   else {
     Serial.print("unregister udp err\r\n");
@@ -85,7 +95,10 @@ void unregUDP(uint8_t _mux_id)
 void regUDP(uint8_t _mux_id, String _hostName = "", long unsigned int _port = 0)
 {
   while (1) {
-    Serial.println("Trying to register UDP");
+    //Serial.print("Trying to register UDP: ");
+    //Serial.print(_mux_id,DEC);
+    //Serial.print(_hostName);
+    //Serial.println(_port,DEC);
 
 
     if (esp8266.registerUDP(_mux_id, _hostName, uint32_t(_port)))
@@ -95,7 +108,7 @@ void regUDP(uint8_t _mux_id, String _hostName = "", long unsigned int _port = 0)
     }
     else {
       Serial.println("Failed to register UDP");
-      //unregUDP(_mux_id); // FIXME: firmware bug?
+      unregUDP(_mux_id);
       Serial.println("Wait 5 seconds and try again...");
       delay(5000);
     }
@@ -113,25 +126,23 @@ void unregUDPServer()
   }
 }
 
+*/
 
-// We need it to recieve the data
 // UDP Serv only works with mux enabled
-// esp8266 firmware: 0.9.2.4
 void regUDPServer()
 {
   while (1) {
-    Serial.println("Try to start server");
-    if (esp8266.startServer(uint32_t(COAP_PORT)))
+    Serial.println("Trying to register UDP");
+    // FIXME: hardcoded mux_id 0 and hostname
+    if (esp8266.startUDPServer(0, "127.0.0.1", COAP_PORT, COAP_PORT,2))
     {
-      // FIXME: hardcoded mux_id
-      regUDP(0, esp8266.getLocalIP(), COAP_PORT);
       Serial.println("ok");
       break;
     }
     else
     {
       Serial.println("Failed to start server");
-      unregUDPServer();
+      //unregUDPServer();
       Serial.println("Wait 5 seconds and try again...");
       delay(5000);
     }
@@ -224,61 +235,15 @@ void setupESP8266()
   Serial.print("setup end\r\n");
 }
 
-void sendCoAPpkt(uint8_t mux_id, coap_packet_t* pkt_p, String hostName = "", long unsigned int port = 0)
-{
-  int rc;
-
-  uint8_t buffer[UDP_TX_PACKET_MAX_SIZE] = {0}; // recieve and send buffer
-  static uint8_t scratch_raw[UDP_TX_PACKET_MAX_SIZE];
-  static coap_rw_buffer_t scratch_buf = {scratch_raw, sizeof(scratch_raw)};
-
-  size_t rsplen = sizeof(buffer);
-
-  coap_packet_t rsppkt;
-  coap_handle_req(&scratch_buf, pkt_p, &rsppkt);
-
-  if (0 != (rc = coap_build(buffer, &rsplen, &rsppkt)))
-  {
-    Serial.print("coap_build failed rc=");
-    Serial.println(rc, DEC);
-  }
-  else
-  {
-    Serial.print("Answer ready:[");
-    for (uint32_t i = 0; i < rsplen; i++)
-    {
-      Serial.print(buffer[i], HEX);
-      Serial.print(' ');
-    }
-    Serial.print("]\r\n");
-    //FIXME: hardcoded mux_id
-    //regUDP(1, hostName, port);
-    esp8266.send(1, buffer, rsplen);
-    //unregUDP(mux_id,hostName,port); -- FIXME: firmware bug?
-  }
-
-}
-
-void sendToObservers()
-{
-  int i;
-  if (observersCount > 0)
-  {
-    for (i = 0; i < observersCount; i++) {
-      // FIXME: hardcoded 4th mux_id
-      sendCoAPpkt(4, &observers[i].pkt, cstrToString(observers[i].hostName, observers[i].hostNameLenght), observers[i].port);
-    }
-  }
-}
 
 //DHT Sensor
 void refreshDHTSensor()
 {
   // Reading temperature or humidity takes about 250 milliseconds!
   // Sensor readings may also be up to 2 seconds 'old' (its a very slow sensor)
-  char d = 0;
-  float h = dhtSensor.readHumidity();
-  float t = dhtSensor.readTemperature();
+  d = 0;
+  h = dhtSensor.readHumidity();
+  t = dhtSensor.readTemperature();
 
   // check if returns are valid, if they are NaN (not a number) then something went wrong!
   if (isnan(t) || isnan(h))
@@ -286,20 +251,21 @@ void refreshDHTSensor()
     d = 0;
     h = 0;
     t = 0;
-    Serial.println("Failed to read from DHT");
+    //Serial.println("Failed to read from DHT");
   }
   else
   {
     d = 1;
+    /*
     Serial.print("Humidity: ");
     Serial.print(h);
     Serial.print(" %\t");
     Serial.print("Temperature: ");
     Serial.print(t);
     Serial.println(" *C");
+    */
   }
-  update_dht(&d, &h, &t);
-
+  tick+=1;
 }
 
 
@@ -314,17 +280,136 @@ void setup()
   Serial.println(esp8266.getIPStatus());
   coap_setup();
   endpoint_setup();
+  setup_dht_endpoint(&d, &h, &t);
   dhtSensor.begin();
   refreshDHTSensor();
   Timer3.initialize(DHT_DATA_UPDATE_PERIOD);         // initialize timer3, and set a 2 seconds period
   Timer3.attachInterrupt(refreshDHTSensor);  // attaches refreshDHTSensor() as a timer overflow interrupt
+  Serial.println("ready");
 }
 
-void refreshCoAP()
-{
-  uint8_t buffer[UDP_TX_PACKET_MAX_SIZE] = {0}; // recieve and send buffer
+//-----------COAP with observe:
 
-  uint32_t len = esp8266.recv(buffer, sizeof(buffer), 1000);
+coap_packet_t pkt; // parse recieved coap packet
+uint8_t buffer[UDP_TX_PACKET_MAX_SIZE] = {0}; // recieve and send buffer
+uint32_t len; // esp8266.recv
+int rc; // coap error codes
+
+
+coap_packet_t rsppkt;
+static uint8_t scratch_raw[UDP_TX_PACKET_MAX_SIZE];
+static coap_rw_buffer_t scratch_buf = {scratch_raw, sizeof(scratch_raw)};
+//size_t rsplen; //TODO:
+
+
+void sendCoAPpkt(coap_packet_t* pkt_p, String hostName = "", long unsigned int port = 0, bool addTick=false)
+{
+    size_t rsplen = sizeof(buffer);
+
+  if (!addTick) {
+      coap_handle_req(&scratch_buf, pkt_p, &rsppkt);
+  }
+  else {
+      /*
+      unsigned long tick;
+    // http://tools.ietf.org/html/draft-ietf-core-observe-16#section-4.4
+    tick = micros()/30.52;
+    */
+    //TESTME:
+    Serial.print("tick");
+    const uint8_t p = tick;
+    Serial.println(p);
+    Serial.println(rsppkt.opts[0].num);
+    rsppkt.opts[0].buf.p = &p;
+    rsppkt.opts[0].buf.len = sizeof(p);
+    memcpy(&rsppkt, pkt_p, sizeof(pkt_p));
+  }
+  
+  if (0 != (rc = coap_build(buffer, &rsplen, &rsppkt)))
+  {
+    Serial.print("coap_build failed rc=");
+    Serial.println(rc, DEC);
+  }
+  else
+  {
+      /*
+    Serial.print("Answer ready:[");
+    for (uint32_t i = 0; i < rsplen; i++)
+    {
+      Serial.print(buffer[i], HEX);
+      Serial.print(' ');
+    }
+    Serial.print("]\r\n");
+    Serial.print("sending to: ");
+    Serial.print(hostName);
+    Serial.print(":");
+    Serial.println(port);
+    */
+    
+    esp8266.send(0, buffer, rsplen);
+    Serial.println("Answer sended");
+  }
+}
+
+bool coapSubscribe(coap_packet_t* pkt_p, String hostName = "", long unsigned int port = 0)
+{
+  size_t rsplen = sizeof(buffer);
+  coap_handle_req(&scratch_buf, pkt_p, &rsppkt);
+
+  rsppkt.numopts=2;
+      
+    rsppkt.opts[1].num=rsppkt.opts[0].num;
+    rsppkt.opts[1].buf.p = rsppkt.opts[0].buf.p;
+    rsppkt.opts[1].buf.len = rsppkt.opts[0].buf.len;
+
+    rsppkt.opts[0].num = COAP_OPTION_OBSERVE;
+    
+    //FIXME:
+    Serial.print("tick");
+    const uint8_t p = tick;
+    Serial.println(p);
+    Serial.println(rsppkt.opts[0].num);
+    rsppkt.opts[0].buf.p = &p;
+    rsppkt.opts[0].buf.len = sizeof(p);
+
+  if (0 != (rc = coap_build(buffer, &rsplen, &rsppkt)))
+  {
+    Serial.print("coap_build failed rc=");
+    Serial.println(rc, DEC);
+  }
+  else
+  {
+      /*
+    Serial.print("Answer ready:[");
+    for (uint32_t i = 0; i < rsplen; i++)
+    {
+      Serial.print(buffer[i], HEX);
+      Serial.print(' ');
+    }
+    Serial.print("]\r\n");
+
+    Serial.print("sending to: ");
+    Serial.print(hostName);
+    Serial.print(":");
+    Serial.println(port);
+    */
+    
+    esp8266.send(0, buffer, rsplen);
+    Serial.println("Answer sended");
+    rsppkt.hdr.t = COAP_TYPE_NONCON;
+    addCoAPObserver(HOST_NAME.c_str(), HOST_NAME.length(), HOST_PORT, rsppkt);
+    Serial.println("Oberver added"); //TODO
+    return true;
+  }
+  return false;
+    
+}
+
+
+void listenCoAP()
+{
+    len = esp8266.recv(buffer, sizeof(buffer), 1000);
+  
   if (len > 0)
   {
     Serial.print("Received:[");
@@ -337,9 +422,6 @@ void refreshCoAP()
 
     // prepare coap answer:
 
-    int rc;
-    coap_packet_t pkt;
-
     if (0 != (rc = coap_parse(&pkt, buffer, len)))
     {
       Serial.print("Bad packet rc=");
@@ -347,41 +429,56 @@ void refreshCoAP()
     }
     else
     {
-      // refreshClientInfo("1"); //TODO
-      // cheking for observe:
-      int optionNumber;
-
+      // FIXME: hardcoded 0 mux_id
+      refreshClientInfo(0);
+      
+      // cheking for observe option:
+      uint8_t optionNumber;
       coap_buffer_t* val = NULL;
-
       for (optionNumber = 0; optionNumber < pkt.numopts; optionNumber++)
       {
         coap_option_t* currentOption = &pkt.opts[optionNumber];
-        if (currentOption->num == 6)
+        if (currentOption->num == COAP_OPTION_OBSERVE)
         {
           val = &currentOption->buf;
           break;
         }
       }
-
       if (val != NULL) {
         // http://tools.ietf.org/html/draft-ietf-core-observe-16#section-2
-        // FIXME: bad comparison types:
-        if (*val->p == 0) { // register
-          addCoAPObserver(HOST_NAME.c_str(), HOST_NAME.length(), COAP_PORT, pkt);
-          Serial.print("subscribe ok");
+        if (val->len == 0) { // register
+          coapSubscribe(&pkt, HOST_NAME, HOST_PORT);
+          Serial.println("subscribe ok"); // TODO: add if
         }
-        if (*val->p == 1) { // deregister
-        }
-
+        //TODO: unsubscribe
       }
+      else {
+        sendCoAPpkt(&pkt, HOST_NAME, HOST_PORT);
+      }
+    }
+  }
+}
 
-      // FIXME: hardcoded 1 mux_id
-      sendCoAPpkt(1, &pkt, HOST_NAME, COAP_PORT);
+void sendToObservers()
+{
+    // TODO: only if the res really changed
+  int i;
+  if (getObserversCount() > 0)
+  {
+      Serial.print("Observers count: ");
+      Serial.println(getObserversCount(),DEC);
+    for (i = 0; i < getObserversCount(); i++) {
+        Serial.print("sending to observer: ");
+        Serial.print(cstrToString(observers[i].hostName, observers[i].hostNameLenght));
+        Serial.print(":");
+        Serial.println(observers[i].port, DEC);
+      sendCoAPpkt(&observers[i].pkt, cstrToString(observers[i].hostName, observers[i].hostNameLenght), observers[i].port,true);
     }
   }
 }
 
 void loop()
 {
-  refreshCoAP();
+  listenCoAP();
+  sendToObservers();
 }

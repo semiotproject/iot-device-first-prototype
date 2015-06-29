@@ -1,12 +1,13 @@
-#include "observers.h" 
+#include "observers.h"
 
 // returns observerIndex or -1
 int addCoAPObserver(const char* hostName,unsigned int hostNameLenght, long unsigned int port, coap_packet_t pkt)
 {
     if ( observersCount < MAX_OBSERVERS_COUNT )
     {
+        // TODO: update by token
         observers[observersCount]=(coap_observer_t){hostName, hostNameLenght, port, pkt};
-        observersCount++;
+        observersCount+=1;
         return observersCount;
     }
     else {
@@ -35,6 +36,11 @@ int removeCoApObserver(unsigned int observerIndex)
     }
 }
 */
+
+unsigned int getObserversCount()
+{
+    return observersCount;
+}
 
 int removeCoApObserver(const char* hostName,unsigned int hostNameLenght, long unsigned int port, coap_packet_t pkt)
 {

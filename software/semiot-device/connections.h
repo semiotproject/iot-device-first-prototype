@@ -1,22 +1,23 @@
 #ifndef   CONNECTIONS_H
 #define   CONNECTIONS_H
 
+#define COAP_PORT 5683
+
 // Arduino<->ESP8266 Baudrate
-#define ESP8266_BAUDRATE 9600
+#define ESP8266_BAUDRATE 115200
 // FIXME?
 // note: there is also a Serial object pointer definition
 // in semiot-device.ino (Serial3)
 
 // Debug Serial Baudrate
-#define SERIAL_BAUDRATE 9600
-
+#define SERIAL_BAUDRATE 115200
 // DHT Sensor
 // DHT11 11
 // DHT22 22
 // DHT21 21
 // AM2301 21
 #define DHT_CONNECTED //TODO:
-#define DHTTYPE DHT22   
+#define DHTTYPE DHT11   
 #define DHT_DATA_PIN 2
 #define DHT_DATA_UPDATE_PERIOD 2000000 // 2 seconds, mega2560
 

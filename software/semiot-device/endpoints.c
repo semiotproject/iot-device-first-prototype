@@ -66,7 +66,7 @@ static int handle_get_dht_humidity(coap_rw_buffer_t *scratch, const coap_packet_
     return coap_make_response(scratch, outpkt, (const char *)dht_humidity, DHT_STRING_SIZE, id_hi, id_lo, &inpkt->tok, COAP_RSPCODE_CONTENT, COAP_CONTENTTYPE_TEXT_PLAIN);
 }
 
-void update_dht(char* dht_avaliable, float* humidity, float* temperature)
+void setup_dht_endpoint(char* dht_avaliable, float* humidity, float* temperature)
 {
     dht=dht_avaliable;
     dht_temperature=dtostrf(*temperature,1,2,&dht_t[0]);

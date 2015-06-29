@@ -10,6 +10,7 @@ extern "C" {
 #include <stddef.h>
     
 #define MAXOPT 16
+#define DEBUG
 
 //http://tools.ietf.org/html/rfc7252#section-3
 typedef struct
@@ -167,6 +168,13 @@ int coap_handle_req(coap_rw_buffer_t *scratch, const coap_packet_t *inpkt, coap_
 void coap_option_nibble(uint32_t value, uint8_t *nibble);
 void coap_setup(void);
 void endpoint_setup(void);
+
+#ifdef DEBUG
+void coap_dumpHeader(coap_header_t *hdr);
+void coap_dump(const uint8_t *buf, size_t buflen, bool bare);
+void coap_dumpOptions(coap_option_t *opts, size_t numopt);
+void coap_dumpPacket(coap_packet_t *pkt);
+#endif //DEBUG
 
 #ifdef __cplusplus
 }
