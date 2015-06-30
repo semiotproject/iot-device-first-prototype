@@ -15,8 +15,8 @@ extern "C" {
 #define DHT_COAP_NAME "dht22"
 #define MAX_SEGMENTS 2  // 2 = /foo/bar, 3 = /foo/bar/baz // FIXME: get rid of microcoap.h definition
     
-static char dht_t[DHT_STRING_SIZE];
-static char dht_h[DHT_STRING_SIZE];
+static char dht_t_str[DHT_STRING_SIZE];
+static char dht_h_str[DHT_STRING_SIZE];
 static char light = '0';
 static char* dht;
 static char* dht_temperature;

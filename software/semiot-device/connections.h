@@ -11,15 +11,18 @@
 
 // Debug Serial Baudrate
 #define SERIAL_BAUDRATE 115200
-// DHT Sensor
-// DHT11 11
-// DHT22 22
-// DHT21 21
-// AM2301 21
-#define DHT_CONNECTED //TODO:
-#define DHTTYPE DHT11   
+
+#define DHT_CONNECTED //TODO
+// DHT Sensor:
+// AUTO_DETECT,
+// DHT11,
+// DHT22,
+// AM2302,  // Packaged DHT22
+// RHT03    // Equivalent to DHT22
+// define DHTTYPE DHT22
 #define DHT_DATA_PIN 2
-#define DHT_DATA_UPDATE_PERIOD 2000000 // 2 seconds, mega2560
+//#define DHT_DATA_UPDATE_PERIOD 2000000 // 2 seconds, mega2560
+// note: DHT_COAP_NAME defined in endpoint.h
 
 // LED
 #define LED_PIN 13

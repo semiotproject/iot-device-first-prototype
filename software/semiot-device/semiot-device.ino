@@ -4,8 +4,7 @@
 
 #include "ESP8266.h" // https://github.com/itead/ITEADLIB_Arduino_WeeESP8266
 
-//TODO: move to some other lib with interruprion, maybe to this one: https://github.com/niesteszeck/idDHT11
-#include "DHT.h" //https://github.com/RobTillaart/Arduino/tree/master/libraries/DHTlib
+#include "DHT.h" // http://www.github.com/markruys/arduino-DHT
 
 //#define DEBUG
 
@@ -41,10 +40,14 @@ HardwareSerial &esp8266_uart = Serial3; /* The UART to communicate with ESP8266 
 
 
 ESP8266 esp8266(esp8266_uart, ESP8266_BAUDRATE);
-DHT dhtSensor = DHT(DHT_DATA_PIN, DHTTYPE);
+DHT dhtSensor;
 char d = 0;
 float h = 0;
 float t = 0;
+bool timeToUpdate=false;
+bool d_changed=false;
+bool h_changed=false;
+bool t_changed=false;
 
 unsigned long tick=0;
 
@@ -239,33 +242,46 @@ void setupESP8266()
 //DHT Sensor
 void refreshDHTSensor()
 {
-  // Reading temperature or humidity takes about 250 milliseconds!
-  // Sensor readings may also be up to 2 seconds 'old' (its a very slow sensor)
-  d = 0;
-  h = dhtSensor.readHumidity();
-  t = dhtSensor.readTemperature();
+    if (timeToUpdate) {
+        String d_cur = (String)dhtSensor.getStatusString();
+        if (d_cur=="TIMEOUT") {
+            if (d!=1) {
+                d=1;
+                d_changed=true;
+            }
+        }
+        if (d_cur == "CHECKSUM") {
+        if (d!=2) {
+                d=2;
+                d_changed=true;
+            }
+        }
+        if (!d_changed) {
+        if (d!=0) {
+                d=0;
+                d_changed=true;
+            }
+        }
+        // TODO: if d=0
+        float h_cur = dhtSensor.getHumidity();
+        if (h!=h_cur) {
+            h=h_cur;
+            h_changed=true;
+        }
+        float t_cur = dhtSensor.getTemperature();
+        if (t!=t_cur) {
+            t=t_cur;
+            t_changed=true;
+        }
+        tick+=1;
+        setup_dht_endpoint(&d, &h, &t);
+        timeToUpdate=false;
+    }
+}
 
-  // check if returns are valid, if they are NaN (not a number) then something went wrong!
-  if (isnan(t) || isnan(h))
-  {
-    d = 0;
-    h = 0;
-    t = 0;
-    //Serial.println("Failed to read from DHT");
-  }
-  else
-  {
-    d = 1;
-    /*
-    Serial.print("Humidity: ");
-    Serial.print(h);
-    Serial.print(" %\t");
-    Serial.print("Temperature: ");
-    Serial.print(t);
-    Serial.println(" *C");
-    */
-  }
-  tick+=1;
+void updateTime()
+{
+    timeToUpdate = true;
 }
 
 
@@ -281,10 +297,9 @@ void setup()
   coap_setup();
   endpoint_setup();
   setup_dht_endpoint(&d, &h, &t);
-  dhtSensor.begin();
-  refreshDHTSensor();
-  Timer3.initialize(DHT_DATA_UPDATE_PERIOD);         // initialize timer3, and set a 2 seconds period
-  Timer3.attachInterrupt(refreshDHTSensor);  // attaches refreshDHTSensor() as a timer overflow interrupt
+  dhtSensor.setup(DHT_DATA_PIN);
+  Timer3.initialize(dhtSensor.getMinimumSamplingPeriod()*1000);         // initialize timer3, and set a 2 seconds period
+  Timer3.attachInterrupt(updateTime);  // attaches function as a timer overflow interrupt
   Serial.println("ready");
 }
 
@@ -467,18 +482,24 @@ void sendToObservers()
   {
       Serial.print("Observers count: ");
       Serial.println(getObserversCount(),DEC);
-    for (i = 0; i < getObserversCount(); i++) {
-        Serial.print("sending to observer: ");
-        Serial.print(cstrToString(observers[i].hostName, observers[i].hostNameLenght));
-        Serial.print(":");
-        Serial.println(observers[i].port, DEC);
-      sendCoAPpkt(&observers[i].pkt, cstrToString(observers[i].hostName, observers[i].hostNameLenght), observers[i].port,true);
-    }
+      if (h_changed) // FIXME: humidity only
+      {
+          for (i = 0; i < getObserversCount(); i++) {
+            Serial.print("sending to observer: ");
+            Serial.print(cstrToString(observers[i].hostName, observers[i].hostNameLenght));
+            Serial.print(":");
+            Serial.println(observers[i].port, DEC);
+            sendCoAPpkt(&observers[i].pkt, cstrToString(observers[i].hostName, observers[i].hostNameLenght), observers[i].port,true);
+          }
+          h_changed=false;
+      }
+    
   }
 }
 
 void loop()
 {
-  listenCoAP();
-  sendToObservers();
+    refreshDHTSensor();
+    listenCoAP();
+    sendToObservers();
 }
