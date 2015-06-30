@@ -82,70 +82,20 @@ void refreshClientInfo(const unsigned int mux_id)
   HOST_PORT = port.toInt();
 }
 
-// FIXME: get rid of:
-/*
-void unregUDP(uint8_t _mux_id)
-{
-  if (esp8266.unregisterUDP(_mux_id)) {
-    Serial.print("unregister udp ok\r\n");
-  Serial.println(esp8266.getIPStatus());
-  }
-  else {
-    Serial.print("unregister udp err\r\n");
-  }
-}
-
-void regUDP(uint8_t _mux_id, String _hostName = "", long unsigned int _port = 0)
-{
-  while (1) {
-    //Serial.print("Trying to register UDP: ");
-    //Serial.print(_mux_id,DEC);
-    //Serial.print(_hostName);
-    //Serial.println(_port,DEC);
-
-
-    if (esp8266.registerUDP(_mux_id, _hostName, uint32_t(_port)))
-    {
-      Serial.println("register udp ok");
-      break;
-    }
-    else {
-      Serial.println("Failed to register UDP");
-      unregUDP(_mux_id);
-      Serial.println("Wait 5 seconds and try again...");
-      delay(5000);
-    }
-  }
-}
-
-void unregUDPServer()
-{
-  if (esp8266.stopServer())
-  {
-    Serial.print("ok\r\n");
-  }
-  else {
-    Serial.print("err\r\n");
-  }
-}
-
-*/
-
 // UDP Serv only works with mux enabled
-void regUDPServer()
+void regUDP()
 {
   while (1) {
     Serial.println("Trying to register UDP");
     // FIXME: hardcoded mux_id 0 and hostname
-    if (esp8266.startUDPServer(0, "127.0.0.1", COAP_PORT, COAP_PORT,2))
+    if (esp8266.registerUDP(0, "127.0.0.1", COAP_PORT, COAP_PORT,2))
     {
       Serial.println("ok");
       break;
     }
     else
     {
-      Serial.println("Failed to start server");
-      //unregUDPServer();
+      Serial.println("Failed to start UDP");
       Serial.println("Wait 5 seconds and try again...");
       delay(5000);
     }
@@ -291,7 +241,7 @@ void setup()
   Serial.print("setup...\r\n");
   Serial3.begin(ESP8266_BAUDRATE);
   setupESP8266();
-  regUDPServer();
+  regUDP();
   Serial.println("Setup status:");
   Serial.println(esp8266.getIPStatus());
   coap_setup();
@@ -361,6 +311,7 @@ void sendCoAPpkt(coap_packet_t* pkt_p, String hostName = "", long unsigned int p
     Serial.println(port);
     */
     
+    // TODO: use actual socket, etc  
     esp8266.send(0, buffer, rsplen);
     Serial.println("Answer sended");
   }
