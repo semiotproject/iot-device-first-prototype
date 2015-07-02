@@ -141,6 +141,8 @@ typedef struct
     const char *elems[MAX_SEGMENTS];
 } coap_endpoint_path_t;
 
+bool is_coap_endpoint_path_t_eq(const coap_endpoint_path_t* a, const coap_endpoint_path_t* b);
+
 typedef struct
 {
     coap_method_t method;               /* (i.e. POST, PUT or GET) */

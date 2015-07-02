@@ -73,12 +73,30 @@ void setup_dht_endpoint(char* dht_avaliable, float* humidity, float* temperature
     dht_humidity=dtostrf(*humidity,1,2,&dht_h_str[0]);
 }
 
+int EndsWithObs(const char* s)
+{
+  int ret = 0;
+  if (s != NULL)
+  {
+    size_t size = strlen(s);
+    if (size >= 4 &&
+        s[size-4] == ';' &&
+        s[size-3] == 'o' &&
+        s[size-2] == 'b' &&
+        s[size-1] == 's')
+    {
+      ret = 1;
+    }
+  }
+  return ret;
+}
 
 void build_rsp(void)
 {
+    int i;
+
     uint16_t len = rsplen;
     const coap_endpoint_t *ep = endpoints;
-    int i;
 
     len--; // Null-terminated string
 
@@ -113,11 +131,4 @@ void build_rsp(void)
 
         ep++;
     }
-}
-
-void build_obs_res(void)
-{
-    obs_res_count = 2;
-    obs_res_list[0]= &path_dht_temperature;
-    obs_res_list[1]= &path_dht_humidity;
 }

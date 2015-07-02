@@ -11,11 +11,17 @@ Arduino MEGA 2560 and ESP8266 WiFi-Module based IoT Device prototype
 
 ## SOFTWARE:
 + Arduino sketches, info about used libraries inside
-+ For testing I recommend to use Wireshark and libcoap 
-coap-client, smcp-server and Copper Firefox Plugin:
++ I recommend to use for testing [Wireshark](https://www.wireshark.org/) and
+[libcoap](https://libcoap.net/):
 ```
 coap-client -v 1 -p 5683 -m get coap://DEVICE_IP/.well-known/core
 ```
+or [smcp](https://github.com/darconeous/smcp/):
+```
+smcpctl observe cp://DEVICE_IP:5683/dht_sensor/humidity
+```
+
+or and [Copper Firefox Plugin](https://addons.mozilla.org/En-us/firefox/addon/copper-270430/).
 
 ## ESP8266
 
