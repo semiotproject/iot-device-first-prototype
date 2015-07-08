@@ -50,7 +50,7 @@ bool d_changed=false;
 bool h_changed=false;
 bool t_changed=false;
 
-unsigned long tick=0;
+uint8_t tick=0;
 
 // FIXME: get rid of Strings:
 String cstrToString(char* buffer, unsigned int bufferPos)
@@ -73,7 +73,23 @@ void parse_uri_path_opt(coap_packet_t* pkt_p, coap_endpoint_path_t* dest) {
     for (opt_i=0;opt_i<opt_count;opt_i++) {
         if (pkt_p->opts[opt_i].num==COAP_OPTION_URI_PATH) {
             segment_lengh = pkt_p->opts[opt_i].buf.len;
-            String string = cstrToString((char*)pkt_p->opts[opt_i].buf.p,segment_lengh);
+            //Serial.print("segment_lengh: ");
+            //Serial.println(segment_lengh,DEC);
+            int buflen = pkt_p->opts[opt_i].buf.len;
+            const uint8_t* buf = pkt_p->opts[opt_i].buf.p;
+            char segment[buflen];
+            int segm_i = 0;
+            while(buflen--) {
+                uint8_t x = *buf++;
+                char c = char(x);
+                //Serial.print(char(c));
+                //Serial.print(" ");
+                segment[segm_i]=c;
+                segm_i++;
+            }
+            //Serial.print("\n");
+            //FIXME: get rid of String:
+            String string = cstrToString(segment,segment_lengh);
             dest->elems[segm_count]=(char*)calloc(segment_lengh+1,sizeof(char));
             strncpy((char *)dest->elems[segm_count], string.c_str(), segment_lengh);
             segm_count+=1;
@@ -244,7 +260,11 @@ void setup()
     endpoint_setup();
     setup_dht_endpoint(&d, &h, &t);
     dhtSensor.setup(DHT_DATA_PIN);
-    Timer3.initialize(dhtSensor.getMinimumSamplingPeriod()*1000); // initialize timer3, and set a 2 seconds period
+    unsigned long period = dhtSensor.getMinimumSamplingPeriod()*1000;
+    Serial.print("Setting timer period, microseconds: ");
+    Serial.println(period,DEC);
+    // FIXME: save this period to timer:
+    Timer3.initialize(2000000); // initialize timer3, and set a 2 seconds period
     Timer3.attachInterrupt(updateTime); // attaches function as a timer overflow interrupt
     Serial.println("ready");
 }
@@ -270,9 +290,10 @@ void sendCoAPpkt(coap_packet_t* pkt_p, String hostName = "", long unsigned int p
         coap_handle_req(&scratch_buf, pkt_p, &rsppkt);
     }
     else {
-        const uint8_t p = tick;
-        rsppkt.opts[0].buf.p = &p;
-        rsppkt.opts[0].buf.len = sizeof(p);
+        rsppkt.opts[0].buf.p = &tick;
+        rsppkt.opts[0].buf.len = sizeof(tick);
+        rsppkt.hdr.id[0]++;
+        rsppkt.hdr.id[1]++;
         memcpy(&rsppkt, pkt_p, sizeof(pkt_p));
     }
     if (0 != (rc = coap_build(buffer, &rsplen, &rsppkt))) {
@@ -293,6 +314,28 @@ bool coapUnsubscribe(coap_packet_t* pkt_p, String* hostName, long unsigned int* 
 
 bool coapSubscribe(coap_packet_t* pkt_p, String* hostName, long unsigned int* port)
 {
+    /*
+    Serial.println("dump:");
+                int buflen = pkt.opts[1].buf.len;
+                const uint8_t* buf = pkt.opts[1].buf.p;
+                char segment[buflen];
+                int segm_i = 0;
+                while(buflen--) {
+                    uint8_t x = *buf++;
+                    
+                    char c = char(x);
+                    Serial.print(char(c));
+                    Serial.print(" ");
+                    segment[segm_i]=c;
+                    segm_i++;
+                }
+                Serial.print("\n");
+    */
+    // saving uri_path before corrupting the pkt:            
+    coap_endpoint_path_t uri_path;
+    parse_uri_path_opt(pkt_p,&uri_path);
+    
+    //handling request:
     size_t rsplen = sizeof(buffer);
     coap_handle_req(&scratch_buf, pkt_p, &rsppkt);
     rsppkt.numopts=2;
@@ -301,9 +344,8 @@ bool coapSubscribe(coap_packet_t* pkt_p, String* hostName, long unsigned int* po
     rsppkt.opts[1].buf.len = rsppkt.opts[0].buf.len;
     rsppkt.opts[0].num = COAP_OPTION_OBSERVE;
     // FIXME: separate add tick function
-    const uint8_t p = tick;
-    rsppkt.opts[0].buf.p = &p;
-    rsppkt.opts[0].buf.len = sizeof(p);
+    rsppkt.opts[0].buf.p = &tick;
+    rsppkt.opts[0].buf.len = sizeof(tick);
     if (0 != (rc = coap_build(buffer, &rsplen, &rsppkt))) {
         Serial.print("coap_build failed rc=");
         Serial.println(rc, DEC);
@@ -311,14 +353,16 @@ bool coapSubscribe(coap_packet_t* pkt_p, String* hostName, long unsigned int* po
     else {
         esp8266.send(0, buffer, rsplen);
         Serial.println("Answer sended");
+        tick++;
         rsppkt.hdr.t = COAP_TYPE_NONCON;
-        coap_endpoint_path_t uri_path;
-        parse_uri_path_opt(pkt_p,&uri_path);
+        /*
+        Serial.println("uri path: ");
+        Serial.println(uri_path.elems[0]);
+        Serial.println(uri_path.elems[1]);
+        */
         if (addCoAPObserver(hostName->c_str(), hostName->length(), port, rsppkt,&uri_path)) {
             Serial.println("Oberver added");
         }
-
-
         return true;
     }
     return false;
@@ -337,6 +381,34 @@ void listenCoAP()
         }
         else {
             refreshClientInfo(udp_mux_id);
+            // FIXME: BAD: UGLY: REWRITE!
+            int o;
+            /*
+            Serial.println("println:");
+            for (o=1;o<=2;o++) {
+                //uri_path.count=2;
+                Serial.println((char*)pkt.opts[o].buf.p);
+                //uri_path.elems[o-1]=cstrToString((char*)pkt_p.opts[o].buf.p,pkt_p.opts[o].buf.len).c_str();  
+            }
+            */
+            /*
+            Serial.println("dump:");
+                int buflen = pkt.opts[1].buf.len;
+                const uint8_t* buf = pkt.opts[1].buf.p;
+                char segment[buflen];
+                int segm_i = 0;
+                while(buflen--) {
+                    uint8_t x = *buf++;
+                    
+                    char c = char(x);
+                    Serial.print(char(c));
+                    Serial.print(" ");
+                    segment[segm_i]=c;
+                    segm_i++;
+                }
+                Serial.print("\n");
+            */
+            
             // cheking for observe option:
             uint8_t optionNumber;
             coap_buffer_t* val = NULL;
@@ -356,12 +428,12 @@ void listenCoAP()
                 }
                 else {
                     if ((val->len == 1) && (*val->p==1)) {
+                        //TODO:
                         if (coapUnsubscribe(&pkt,&HOST_NAME,&HOST_PORT)) {
                             Serial.println("unsubscribe ok");
                         }
                     }
                 }
-
             }
             else {
                 sendCoAPpkt(&pkt, HOST_NAME, HOST_PORT);
@@ -369,6 +441,27 @@ void listenCoAP()
         }
     }
 }
+
+/*
+//FIXME:
+bool is_coap_endpoint_path_t_eq(const coap_endpoint_path_t* a, const coap_endpoint_path_t* b) {
+    bool eq = false;
+    unsigned int count = a->count;
+    
+    if (count==b->count) {
+        unsigned int i;
+        for (i=0;i<count;i++) {
+            if (strcmp(a->elems[i], b->elems[i]) != 0) {
+                return eq;
+            }
+        }
+        eq = true;
+        return eq;
+    }
+    return eq;
+}
+*/
+
 
 void sendToObservers()
 {

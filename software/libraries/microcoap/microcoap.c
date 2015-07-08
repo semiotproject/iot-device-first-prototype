@@ -39,6 +39,7 @@ void coap_dump(const uint8_t *buf, size_t buflen, bool bare)
 }
 #endif
 
+
 bool is_coap_endpoint_path_t_eq(const coap_endpoint_path_t* a, const coap_endpoint_path_t* b) {
     bool eq = false;
     unsigned int count = a->count;
@@ -54,6 +55,7 @@ bool is_coap_endpoint_path_t_eq(const coap_endpoint_path_t* a, const coap_endpoi
     }
     return eq;
 }
+
 
 int coap_parseHeader(coap_header_t *hdr, const uint8_t *buf, size_t buflen)
 {
